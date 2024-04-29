@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "tiny-text-to-3d"
+version = "0.1.0"
+description = ""
+authors = ["Eric Chen <eric.chen@backflip.ai>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+torch = "^2.3.0"
+torchvision = "^0.18.0"
+tqdm = "^4.66.2"
+trimesh = "^4.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
