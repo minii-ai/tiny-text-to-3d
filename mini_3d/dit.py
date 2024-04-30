@@ -64,8 +64,8 @@ class MLP(nn.Module):
         drop: float = 0,
     ):
         super().__init__()
+        out_features = out_features or in_features
         hidden_features = hidden_features or in_features
-        out_features = hidden_features or in_features
 
         self.mlp = nn.Sequential(
             nn.Linear(in_features, hidden_features),
@@ -141,7 +141,13 @@ class DiTBlock(nn.Module):
         self.adaLN_modulation = nn.Sequential(
             nn.SiLU(), nn.Linear(hidden_size, 6 * hidden_size)
         )
-        self.mlp = MLP(hidden_size, hidden_size, act_layer=approx_gelu)
+
+        mlp_hidden_dim = int(hidden_size * mlp_ratio)
+        self.mlp = MLP(
+            in_features=hidden_size,
+            hidden_features=mlp_hidden_dim,
+            act_layer=approx_gelu,
+        )
         self.msa = MultiHeadAttention(hidden_size, num_heads)
 
     def forward(self, x: torch.Tensor, c: torch.Tensor):
@@ -149,7 +155,6 @@ class DiTBlock(nn.Module):
         Params:
             - x: (B, L, D)
         """
-
         h = x
         x = self.layernorm1(x)  # (B, L, D)
 
@@ -166,8 +171,35 @@ class DiTBlock(nn.Module):
         h = x
         x = self.layernorm2(x)
         x = self.mlp(x)  # feed forward
+
         x = modulate(x, mlp_shift, mlp_scale)  # scale and shift
         x = h + mlp_gate.unsqueeze(1)  # gated residual connection
+
+        return x
+
+
+class OutLayer(nn.Module):
+    """
+    Final linear projection layer of DiT
+    """
+
+    def __init__(self, in_features: int, out_features: int):
+        super().__init__()
+        self.layernorm = nn.LayerNorm(in_features)
+        self.adaLN_modulate = nn.Sequential(
+            nn.SiLU(), nn.Linear(in_features, 2 * in_features)
+        )
+        self.linear = nn.Linear(in_features, out_features)
+
+    def forward(self, x: torch.Tensor):
+        x = self.layernorm(x)
+
+        # modulation
+        shift, scale = self.adaLN_modulate(x).chunk(2, dim=-1)
+        x = scale * x + shift
+
+        # out linear
+        x = self.linear(x)
 
         return x
 
@@ -186,6 +218,7 @@ class DiT(nn.Module):
         hidden_size: int,
         num_heads: int,
         cond_embedding_dim: int,
+        mlp_ratio: int = 4,
         learn_sigma: bool = True,
     ):
         super().__init__()
@@ -195,11 +228,19 @@ class DiT(nn.Module):
         self.hidden_size = hidden_size
         self.num_heads = num_heads
         self.cond_embedding_dim = cond_embedding_dim
+        self.mlp_ratio = mlp_ratio
+        self.out_channels = in_channels * 2 if learn_sigma else in_channels
         self.learn_sigma = learn_sigma
 
         self.x_embed = nn.Linear(in_channels, hidden_size)
         self.t_embed = TimestepEmbedding(hidden_size)
         self.c_embed = nn.Linear(cond_embedding_dim, hidden_size)
+
+        self.dit_blocks = nn.ModuleList(
+            [DiTBlock(hidden_size, num_heads, mlp_ratio) for i in range(depth)]
+        )
+
+        self.out_layer = OutLayer(hidden_size, self.out_channels)
 
     def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor):
         assert (
@@ -212,3 +253,12 @@ class DiT(nn.Module):
 
         # add time and condition embed
         cond = t + cond
+
+        # pass thr. dit blocks
+        for dit_block in self.dit_blocks:
+            x = dit_block(x, cond)
+
+        # final linear layer
+        x = self.out_layer(x)
+
+        return x
