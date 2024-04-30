@@ -204,10 +204,9 @@ class OutLayer(nn.Module):
         return x
 
 
-class DiT(nn.Module):
+class PointCloudDiT(nn.Module):
     """
-    DiT modified to operate on 1D sequences and condition on arbitrary embeddings
-    instead of class labels.
+    DiT modified for processing point clouds.
     """
 
     def __init__(
@@ -242,21 +241,29 @@ class DiT(nn.Module):
 
         self.out_layer = OutLayer(hidden_size, self.out_channels)
 
-    def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor):
+    def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor = None):
         assert (
             x.shape[-2] == self.input_size and x.shape[-1] == self.in_channels
         ), "Input shape mismatch"
 
         x = self.x_embed(x)
         t = self.t_embed(t)
-        cond = self.c_embed(cond)
 
-        # add time and condition embed
-        cond = t + cond
+        # project condition and add it to time embedding
+        if cond is not None:
+            c = self.c_embed(cond)
+            t = t + c
+
+        # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
+        cls_token = t.unsqueeze(1)  # (B, 1, h_s)
+        x = torch.cat([cls_token, x], dim=1)
 
         # pass thr. dit blocks
         for dit_block in self.dit_blocks:
-            x = dit_block(x, cond)
+            x = dit_block(x, t)
+
+        # remove cls tokens
+        x = x[:, 1:, :]
 
         # final linear layer
         x = self.out_layer(x)
