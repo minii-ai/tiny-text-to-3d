@@ -2,6 +2,7 @@ from typing import Literal
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .dit import PointCloudDiT
 
@@ -69,6 +70,10 @@ class Diffusion(nn.Module):
             "sqrt_one_minus_alpha_cumprod", sqrt_one_minus_alpha_cumprod
         )
 
+    @property
+    def device(self):
+        return self.beta.device
+
     def q_sample(
         self, x_start: torch.Tensor, t: torch.Tensor, noise: torch.Tensor = None
     ):
@@ -86,5 +91,25 @@ class Diffusion(nn.Module):
 
         return x_t
 
-    def forward(self):
-        pass
+    def forward(self, model: PointCloudDiT, x_start: torch.Tensor, **model_kwargs):
+        """
+        Compute simple loss / hybrid loss for diffusion
+        """
+        device = self.device
+        B = x_start.shape[0]
+
+        # uniformly sample timesteps
+        t = torch.randint(0, self.num_timesteps, (B,), device=device)
+
+        # add noise to x_start
+        noise = torch.randn_like(x_start)
+        x_t = self.q_sample(x_start, t, noise)
+
+        # predict noise (assume learn sigma is false for now)
+        pred = model(x_t, t)
+        pred_noise = pred
+
+        # mse over pred noise and noise
+        loss = F.mse_loss(pred_noise, noise)
+
+        return loss
