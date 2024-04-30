@@ -40,13 +40,11 @@ class Diffusion(nn.Module):
 
     def __init__(
         self,
-        model: DiT,
         schedule_type: Literal["linear", "cosine"] = "linear",
         num_timesteps: int = 1000,
         learn_sigma: bool = False,
     ):
         super().__init__()
-        self.model = model
         self.schedule_type = schedule_type
         self.num_timesteps = num_timesteps
         self.learn_sigma = learn_sigma
