@@ -3,7 +3,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 
-from .dit import DiT
+from .dit import PointCloudDiT
 
 
 # noise schedule
