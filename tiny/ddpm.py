@@ -23,7 +23,7 @@ class PointCloudDDPM(nn.Module):
         super().__init__()
         self.model = model
         self.diffusion = diffusion
-        self.shape = (model.input_size, model.in_channels)
+        # self.shape = (model.input_size, model.in_channels)
 
     def get_loss(self, x_start: torch.Tensor, **model_kwargs):
         return self.diffusion(self.model, x_start, **model_kwargs)

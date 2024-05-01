@@ -23,7 +23,9 @@ class SineCosineDataset(BaseDataset):
             self.data.append({"data": data, "label": 1, "text": "cosine"})
 
     def __len__(self):
-        return len(self.data)
+        # return len(self.data)
+        return 128
 
     def __getitem__(self, idx: int):
-        return self.data[idx]
+        return self.data[0]
+        # return self.data[idx]

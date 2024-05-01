@@ -45,6 +45,13 @@ def sample_gaussian(
     return sample
 
 
+def mean_flat(tensor):
+    """
+    Take the mean over all non-batch dimensions.
+    """
+    return tensor.mean(dim=list(range(1, len(tensor.shape))))
+
+
 class Diffusion(nn.Module):
     """
     Utilities for noising and denoising during the gaussian diffusion process
@@ -232,6 +239,10 @@ class Diffusion(nn.Module):
         pred_noise = pred
 
         # mse over pred noise and noise
-        loss = F.mse_loss(pred_noise, noise)
+        loss = mean_flat(F.mse_loss(pred_noise, noise, reduction="none")).mean()
+
+        # raise RuntimeError
+
+        # loss = F.mse_loss(pred_noise, noise)
 
         return loss

@@ -84,6 +84,8 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         head_dim = dim // num_heads
 
+        assert head_dim * num_heads == dim, "dim must be divisible by num_heads"
+
         self.num_heads = num_heads
         self.head_dim = head_dim
         self.to_qkv = nn.Linear(dim, 3 * dim)
@@ -155,25 +157,23 @@ class DiTBlock(nn.Module):
         Params:
             - x: (B, L, D)
         """
-        h = x
-        x = self.layernorm1(x)  # (B, L, D)
-
         # get shift, scale, and gate
         shift_scale_gate = self.adaLN_modulation(c)
         msa_shift, msa_scale, msa_gate, mlp_shift, mlp_scale, mlp_gate = (
             shift_scale_gate.chunk(6, dim=-1)
         )  # (B, D) x 6
 
-        x = self.msa(x)  # multi-head self attention
+        h = x
+        x = self.layernorm1(x)  # (B, L, D)
         x = modulate(x, msa_shift, msa_scale)  # scale and shift
+        x = self.msa(x)  # multi-head self attention
         x = h + msa_gate.unsqueeze(1) * x  # gated residual connection
 
         h = x
         x = self.layernorm2(x)
-        x = self.mlp(x)  # feed forward
-
         x = modulate(x, mlp_shift, mlp_scale)  # scale and shift
-        x = h + mlp_gate.unsqueeze(1)  # gated residual connection
+        x = self.mlp(x)  # feed forward
+        x = h + mlp_gate.unsqueeze(1) * x  # gated residual connection
 
         return x
 
@@ -261,15 +261,16 @@ class PointCloudDiT(nn.Module):
             t = t + c
 
         # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
-        cls_token = t.unsqueeze(1)  # (B, 1, h_s)
-        x = torch.cat([cls_token, x], dim=1)
+        # cls_token = t.unsqueeze(1)  # (B, 1, h_s)
+        # x = torch.cat([cls_token, x], dim=1)
+        x = x
 
         # pass thr. dit blocks
         for dit_block in self.dit_blocks:
             x = dit_block(x, t)
 
         # remove cls tokens
-        x = x[:, 1:, :]
+        # x = x[:, 1:, :]
 
         # final linear layer
         x = self.out_layer(x)
