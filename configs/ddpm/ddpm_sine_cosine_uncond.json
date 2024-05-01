@@ -1,0 +1,16 @@
+{
+  "model_type": "uncond",
+  "diffusion": {
+    "num_timesteps": 250,
+    "schedule_type": "cosine",
+    "learn_sigma": false
+  },
+  "model": {
+    "input_size": 64,
+    "in_channels": 2,
+    "depth": 4,
+    "hidden_size": 128,
+    "num_heads": 4,
+    "mlp_ratio": 4
+  }
+}
