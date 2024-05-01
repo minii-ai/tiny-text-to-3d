@@ -34,6 +34,16 @@ def extract(arr: torch.Tensor, t: torch.Tensor, shape: torch.Size):
     return val.reshape(B, *(1 for _ in range(len(shape) - 1)))
 
 
+def sample_gaussian(
+    mean: torch.Tensor, variance: torch.Tensor, eps: torch.Tensor = None
+):
+    if eps is None:
+        eps = torch.randn_like(mean)
+    std = variance**0.5
+    sample = mean + std * eps
+    return sample
+
+
 class Diffusion(nn.Module):
     """
     Utilities for noising and denoising during the gaussian diffusion process
@@ -59,20 +69,27 @@ class Diffusion(nn.Module):
         alpha = 1 - beta
         alpha_cumprod = torch.cumprod(alpha, dim=-1)
         sqrt_alpha_cumprod = torch.sqrt(alpha_cumprod)
-        sqrt_one_minus_alpha_cumprod = torch.sqrt(1 - alpha_cumprod)
+        one_minus_alpha_cumprod = 1 - alpha_cumprod
 
         # register the values as buffers so we can move them to any device easily
         self.register_buffer("beta", beta)
         self.register_buffer("alpha", alpha)
         self.register_buffer("alpha_cumprod", alpha_cumprod)
         self.register_buffer("sqrt_alpha_cumprod", sqrt_alpha_cumprod)
-        self.register_buffer(
-            "sqrt_one_minus_alpha_cumprod", sqrt_one_minus_alpha_cumprod
-        )
+        self.register_buffer("one_minus_alpha_cumprod", one_minus_alpha_cumprod)
 
     @property
     def device(self):
         return self.beta.device
+
+    def q_mean_variance(self, x_start: torch.Tensor, t: torch.Tensor):
+        """
+        Computes the mean and variance of q(x_t | x_start)
+        """
+        mean = extract(self.sqrt_alpha_cumprod, t, x_start.shape) * x_start
+        variance = extract(self.one_minus_alpha_cumprod, t, x_start.shape)
+
+        return mean, variance
 
     def q_sample(
         self, x_start: torch.Tensor, t: torch.Tensor, noise: torch.Tensor = None
@@ -84,10 +101,8 @@ class Diffusion(nn.Module):
         if noise is None:
             noise = torch.randn_like(x_start)
 
-        x_t = (
-            extract(self.alpha_cumprod, t, x_start.shape) * x_start
-            + extract(self.sqrt_one_minus_alpha_cumprod, t, x_start.shape) * noise
-        )
+        mean, variance = self.q_mean_variance(x_start, t)
+        x_t = sample_gaussian(mean, variance, noise)
 
         return x_t
 

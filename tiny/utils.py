@@ -11,13 +11,21 @@ from torchvision.transforms import v2
 def visualize_point_cloud(point_cloud: torch.Tensor):
     """
     Params:
-        - point_cloud: (N, 3) a list of points in 3D
+        - point_cloud: (N, D) a list of points in 2D or 3D space
     """
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
+    dim = point_cloud.shape[1]
 
-    X, Y, Z = point_cloud[:, 0], point_cloud[:, 1], point_cloud[:, 2]
-    ax.scatter(X, Y, Z)
+    assert dim in {2, 3}
+
+    if dim == 2:
+        ax = fig.add_subplot(111)
+        X, Y = point_cloud[:, 0], point_cloud[:, 1]
+        ax.scatter(X, Y)
+    elif dim == 3:
+        ax = fig.add_subplot(111, projection="3d")
+        X, Y, Z = point_cloud[:, 0], point_cloud[:, 1], point_cloud[:, 2]
+        ax.scatter(X, Y, Z)
 
     plt.show()
 

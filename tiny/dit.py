@@ -216,9 +216,9 @@ class PointCloudDiT(nn.Module):
         depth: int,
         hidden_size: int,
         num_heads: int,
-        cond_embedding_dim: int,
+        cond_embedding_dim: int = None,
         mlp_ratio: int = 4,
-        learn_sigma: bool = True,
+        learn_sigma: bool = False,
     ):
         super().__init__()
         self.input_size = input_size
@@ -233,13 +233,19 @@ class PointCloudDiT(nn.Module):
 
         self.x_embed = nn.Linear(in_channels, hidden_size)
         self.t_embed = TimestepEmbedding(hidden_size)
-        self.c_embed = nn.Linear(cond_embedding_dim, hidden_size)
+
+        if cond_embedding_dim is not None:
+            self.c_embed = nn.Linear(cond_embedding_dim, hidden_size)
 
         self.dit_blocks = nn.ModuleList(
             [DiTBlock(hidden_size, num_heads, mlp_ratio) for i in range(depth)]
         )
 
         self.out_layer = OutLayer(hidden_size, self.out_channels)
+
+    @property
+    def conditional(self):
+        return self.cond_embedding_dim is not None
 
     def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor = None):
         assert (
@@ -250,7 +256,7 @@ class PointCloudDiT(nn.Module):
         t = self.t_embed(t)
 
         # project condition and add it to time embedding
-        if cond is not None:
+        if cond is not None and self.conditional:
             c = self.c_embed(cond)
             t = t + c
 
@@ -269,3 +275,32 @@ class PointCloudDiT(nn.Module):
         x = self.out_layer(x)
 
         return x
+
+
+class UnconditionalPointCloudDiT(PointCloudDiT):
+    """
+    Point Cloud DiT for Unconditional Diffusion
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        in_channels: int,
+        depth: int,
+        hidden_size: int,
+        num_heads: int,
+        mlp_ratio: int = 4,
+        learn_sigma: bool = False,
+    ):
+        super().__init__(
+            input_size=input_size,
+            in_channels=in_channels,
+            depth=depth,
+            hidden_size=hidden_size,
+            num_heads=num_heads,
+            mlp_ratio=mlp_ratio,
+            learn_sigma=learn_sigma,
+        )
+
+    def forward(self, x: torch.Tensor, t: torch.Tensor, **model_kwargs):
+        return super().forward(x, t)
