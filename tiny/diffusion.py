@@ -239,10 +239,7 @@ class Diffusion(nn.Module):
         pred_noise = pred
 
         # mse over pred noise and noise
-        loss = mean_flat(F.mse_loss(pred_noise, noise, reduction="none")).mean()
-
-        # raise RuntimeError
-
-        # loss = F.mse_loss(pred_noise, noise)
+        loss = F.mse_loss(pred_noise, noise)
+        # loss = mean_flat(F.mse_loss(pred_noise, noise, reduction="none")).mean()
 
         return loss
