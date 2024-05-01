@@ -1,3 +1,5 @@
+import io
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -8,13 +10,22 @@ from PIL import Image
 from torchvision.transforms import v2
 
 
-def visualize_point_cloud(point_cloud: torch.Tensor):
+def _fig_to_image(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
+
+def plot_point_cloud(point_cloud: torch.Tensor):
     """
     Params:
         - point_cloud: (N, D) a list of points in 2D or 3D space
     """
     fig = plt.figure()
     dim = point_cloud.shape[1]
+    point_cloud = point_cloud.cpu()
 
     assert dim in {2, 3}
 
@@ -27,7 +38,32 @@ def visualize_point_cloud(point_cloud: torch.Tensor):
         X, Y, Z = point_cloud[:, 0], point_cloud[:, 1], point_cloud[:, 2]
         ax.scatter(X, Y, Z)
 
-    plt.show()
+    return _fig_to_image(fig)
+
+
+def plot_point_clouds(point_clouds: torch.Tensor, rows: int, cols: int):
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+    axes = axes.ravel()
+    dim = point_clouds.shape[2]
+    point_clouds = point_clouds.cpu()
+
+    for idx, ax in enumerate(axes):
+        if idx < len(point_clouds):
+
+            if dim == 2:
+                X, Y = point_clouds[idx, :, 0], point_clouds[idx, :, 1]
+                ax.scatter(X, Y)
+            elif dim == 3:
+                X, Y, Z = (
+                    point_clouds[idx, :, 0],
+                    point_clouds[idx, :, 1],
+                    point_clouds[idx, :, 2],
+                )
+                ax.scatter(X, Y, Z)
+
+            ax.axis("equal")  # Ensures that the scale of x and y axes are the same
+        else:
+            ax.axis("off")  # Turn off axis if there's no data to plot
 
 
 def convert_point_cloud_to_ply(point_cloud: torch.Tensor, save_path: str):

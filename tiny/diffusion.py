@@ -3,6 +3,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from .dit import PointCloudDiT
 
@@ -70,6 +71,22 @@ class Diffusion(nn.Module):
         alpha_cumprod = torch.cumprod(alpha, dim=-1)
         sqrt_alpha_cumprod = torch.sqrt(alpha_cumprod)
         one_minus_alpha_cumprod = 1 - alpha_cumprod
+        sqrt_one_minus_alpha_cumprod = torch.sqrt(one_minus_alpha_cumprod)
+
+        # values for q posterior, reverse diffusion
+        alpha_cumprod_prev = F.pad(alpha_cumprod[:-1], (1, 0), value=1)
+        sqrt_alpha_cumprod_prev = torch.sqrt(alpha_cumprod_prev)
+        one_minus_alpha_cumprod_prev = 1 - alpha_cumprod_prev
+
+        q_posterior_mean_coef1 = (
+            sqrt_alpha_cumprod_prev * beta / one_minus_alpha_cumprod
+        )
+        q_posterior_mean_coef2 = (
+            torch.sqrt(alpha) * one_minus_alpha_cumprod_prev / one_minus_alpha_cumprod
+        )
+        q_posterior_variance = (
+            one_minus_alpha_cumprod_prev / one_minus_alpha_cumprod
+        ) * beta
 
         # register the values as buffers so we can move them to any device easily
         self.register_buffer("beta", beta)
@@ -77,6 +94,12 @@ class Diffusion(nn.Module):
         self.register_buffer("alpha_cumprod", alpha_cumprod)
         self.register_buffer("sqrt_alpha_cumprod", sqrt_alpha_cumprod)
         self.register_buffer("one_minus_alpha_cumprod", one_minus_alpha_cumprod)
+        self.register_buffer(
+            "sqrt_one_minus_alpha_cumprod", sqrt_one_minus_alpha_cumprod
+        )
+        self.register_buffer("q_posterior_mean_coef1", q_posterior_mean_coef1)
+        self.register_buffer("q_posterior_mean_coef2", q_posterior_mean_coef2)
+        self.register_buffer("q_posterior_variance", q_posterior_variance)
 
     @property
     def device(self):
@@ -106,6 +129,90 @@ class Diffusion(nn.Module):
 
         return x_t
 
+    def predict_x_start(self, x_t: torch.Tensor, t: torch.Tensor, noise: torch.Tensor):
+        """Predict x_start from noise"""
+        x_start = (
+            x_t - extract(self.sqrt_one_minus_alpha_cumprod, t, x_t.shape) * noise
+        ) / extract(self.sqrt_alpha_cumprod, t, x_t.shape)
+
+        return x_start
+
+    def q_posterior_mean_variance(
+        self, x_t: torch.Tensor, x_start: torch.Tensor, t: torch.Tensor
+    ):
+        """
+        Get the mean and variance of q(x_t-1 | x_t, x_start)
+        """
+        mean = (
+            extract(self.q_posterior_mean_coef1, t, x_start.shape) * x_start
+            + extract(self.q_posterior_mean_coef2, t, x_t.shape) * x_t
+        )
+
+        variance = extract(self.q_posterior_variance, t, x_t.shape)
+
+        return mean, variance
+
+    def p_mean_variance(
+        self,
+        model: nn.Module,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        clip_denoised: bool = True,
+        **model_kwargs
+    ):
+        # predict noise
+        pred_noise = model(x_t, t, **model_kwargs)
+
+        # predict x_start
+        pred_x_start = self.predict_x_start(x_t, t, pred_noise)
+
+        if clip_denoised:
+            pred_x_start = pred_x_start.clip(-1, 1)
+
+        mean, variance = self.q_posterior_mean_variance(x_t, pred_x_start, t)
+        return mean, variance
+
+    @torch.inference_mode()
+    def p_sample(
+        self,
+        model: nn.Module,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        clip_denoised: bool = True,
+        **model_kwargs
+    ):
+        """
+        Sample from x_t-1 ~ p(x_t-1 | x_t)
+        """
+        mean, variance = self.p_mean_variance(
+            model, x_t, t, clip_denoised=clip_denoised, **model_kwargs
+        )
+        nonzero_mask = (t != 0).unsqueeze(-1).unsqueeze(-1)
+        eps = torch.randn_like(variance) * nonzero_mask
+
+        prev_x = sample_gaussian(mean, variance, eps)
+
+        return prev_x
+
+    @torch.inference_mode()
+    def p_sample_loop(
+        self, model: nn.Module, shape: tuple, clip_denoised: bool = True, **model_kwargs
+    ):
+        B = shape[0]
+        x_t = torch.randn(*shape, device=self.device)
+
+        for t in tqdm(
+            reversed(range(self.num_timesteps)),
+            total=self.num_timesteps,
+            desc="Sampling",
+        ):
+            t = torch.full((B,), t, device=self.device)
+            x_t = self.p_sample(
+                model, x_t, t, clip_denoised=clip_denoised, **model_kwargs
+            )
+
+        return x_t
+
     def forward(self, model: PointCloudDiT, x_start: torch.Tensor, **model_kwargs):
         """
         Compute simple loss / hybrid loss for diffusion
@@ -121,7 +228,7 @@ class Diffusion(nn.Module):
         x_t = self.q_sample(x_start, t, noise)
 
         # predict noise (assume learn sigma is false for now)
-        pred = model(x_t, t)
+        pred = model(x_t, t, **model_kwargs)
         pred_noise = pred
 
         # mse over pred noise and noise

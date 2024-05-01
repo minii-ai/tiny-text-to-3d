@@ -53,6 +53,7 @@ class PointCloudDiffusionTrainer:
         self.ddpm.to(self.device)
 
         num_iters = len(self.train_loader) * self.num_epochs
+        losses = []
 
         with tqdm(total=num_iters) as pbar:
             for epoch in range(self.num_epochs):
@@ -60,3 +61,6 @@ class PointCloudDiffusionTrainer:
                     loss = self.train_step(batch)
                     pbar.set_postfix(loss=loss.item())
                     pbar.update(1)
+                    losses.append(loss.item())
+
+        return losses
