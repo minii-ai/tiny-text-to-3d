@@ -1,5 +1,6 @@
 import io
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -94,6 +95,26 @@ def plot_images(images: list[Image.Image], **kwargs):
         axs[i].axis("off")
 
     plt.tight_layout()
+
+
+def create_video_from_pil(images: list[Image.Image], video_name: str, fps: int):
+    # Assuming all images are the same size, get dimensions from the first image
+    width, height = images[0].size
+
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # Use 'mp4v' for MP4
+    video = cv2.VideoWriter(video_name, fourcc, fps, (width, height))
+
+    for pil_image in images:
+        # Convert the PIL image to an OpenCV image (convert RGB to BGR)
+        open_cv_image = np.array(pil_image.convert("RGB"))
+        video_frame = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
+
+        # Write the frame to the video
+        video.write(video_frame)
+
+    # Release the video writer
+    video.release()
 
 
 def count_parameters(model: nn.Module):

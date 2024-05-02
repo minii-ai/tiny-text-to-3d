@@ -205,6 +205,17 @@ class Diffusion(nn.Module):
     def p_sample_loop(
         self, model: nn.Module, shape: tuple, clip_denoised: bool = True, **model_kwargs
     ):
+        for sample in self.p_sample_loop_progressive(
+            model=model, shape=shape, clip_denoised=clip_denoised, **model_kwargs
+        ):
+            final = sample
+
+        return final
+
+    @torch.inference_mode()
+    def p_sample_loop_progressive(
+        self, model: nn.Module, shape: tuple, clip_denoised: bool = True, **model_kwargs
+    ):
         B = shape[0]
         x_t = torch.randn(*shape, device=self.device)
 
@@ -218,7 +229,7 @@ class Diffusion(nn.Module):
                 model, x_t, t, clip_denoised=clip_denoised, **model_kwargs
             )
 
-        return x_t
+            yield x_t
 
     def forward(self, model: PointCloudDiT, x_start: torch.Tensor, **model_kwargs):
         """
