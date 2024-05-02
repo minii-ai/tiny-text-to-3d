@@ -66,6 +66,8 @@ def plot_point_clouds(point_clouds: torch.Tensor, rows: int, cols: int):
         else:
             ax.axis("off")  # Turn off axis if there's no data to plot
 
+    return _fig_to_image(fig)
+
 
 def convert_point_cloud_to_ply(point_cloud: torch.Tensor, save_path: str):
     if isinstance(point_cloud, torch.Tensor):

@@ -2,7 +2,7 @@
   "model_type": "uncond",
   "diffusion": {
     "num_timesteps": 250,
-    "schedule_type": "cosine",
+    "schedule_type": "linear",
     "learn_sigma": false
   },
   "model": {
@@ -10,7 +10,7 @@
     "in_channels": 2,
     "depth": 1,
     "hidden_size": 128,
-    "num_heads": 4,
+    "num_heads": 1,
     "mlp_ratio": 4
   }
 }

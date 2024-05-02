@@ -1,3 +1,4 @@
+import os
 from typing import Literal
 
 import torch
@@ -24,6 +25,8 @@ class PointCloudDiffusionTrainer:
         resume_checkpoint: bool = False,
         save_dir: str = None,
         device=device,
+        checkpoint_fn=None,
+        checkpoint_every: int = 1,
     ):
         self.ddpm = ddpm
         self.train_loader = train_loader
@@ -33,6 +36,8 @@ class PointCloudDiffusionTrainer:
         self.resume_checkpoint = resume_checkpoint
         self.save_dir = save_dir
         self.device = device
+        self.checkpoint_fn = checkpoint_fn
+        self.checkpoint_every = checkpoint_every
 
         self.optimizer = torch.optim.Adam(ddpm.parameters(), lr=lr)
 
@@ -55,6 +60,10 @@ class PointCloudDiffusionTrainer:
         num_iters = len(self.train_loader) * self.num_epochs
         losses = []
 
+        # make save dir
+        if self.save_dir is not None:
+            os.makedirs(self.save_dir, exist_ok=True)
+
         with tqdm(total=num_iters) as pbar:
             for epoch in range(self.num_epochs):
                 for batch in self.train_loader:
@@ -62,5 +71,20 @@ class PointCloudDiffusionTrainer:
                     pbar.set_postfix(loss=loss.item())
                     pbar.update(1)
                     losses.append(loss.item())
+
+                if (
+                    self.checkpoint_fn is not None
+                    and (epoch + 1) % self.checkpoint_every == 0
+                ):
+                    data = {
+                        "epoch": epoch,
+                        "ddpm": self.ddpm,
+                        "save_dir": self.save_dir,
+                    }
+                    self.checkpoint_fn(data)
+
+        if self.save_dir:
+            weights_save_path = os.path.join(self.save_dir, "weights.pt")
+            torch.save(self.ddpm.model.state_dict(), weights_save_path)
 
         return losses

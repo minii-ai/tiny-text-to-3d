@@ -8,6 +8,7 @@ sys.path.append("../")
 
 from datasets import SineCosineDataset
 from tiny import PointCloudDDPM, PointCloudDiffusionTrainer
+from tiny.checkpoint import LogSamples
 
 
 def parse_args():
@@ -15,6 +16,7 @@ def parse_args():
     parser.add_argument("--train_config", type=str, required=True)
     parser.add_argument("--ddpm_config", type=str, required=True)
     parser.add_argument("--save_dir", type=str, required=True)
+    parser.add_argument("--checkpoint_every", type=int, required=True, default=1000)
 
     return parser.parse_args()
 
@@ -45,6 +47,8 @@ def main(args):
         lr=train_config["lr"],
         num_epochs=train_config["num_epochs"],
         save_dir=args.save_dir,
+        checkpoint_fn=LogSamples(num_samples=64, rows=8, cols=8),
+        checkpoint_every=args.checkpoint_every,
     )
 
     trainer.train()

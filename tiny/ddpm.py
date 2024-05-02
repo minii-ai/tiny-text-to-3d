@@ -23,10 +23,17 @@ class PointCloudDDPM(nn.Module):
         super().__init__()
         self.model = model
         self.diffusion = diffusion
-        # self.shape = (model.input_size, model.in_channels)
+        self.shape = (model.input_size, model.in_channels)
 
     def get_loss(self, x_start: torch.Tensor, **model_kwargs):
         return self.diffusion(self.model, x_start, **model_kwargs)
+
+    def sample(self, batch_size: int = 1, clip_denoised: bool = True, **model_kwargs):
+        shape = (batch_size, *self.shape)
+
+        return self.diffusion.p_sample_loop(
+            self.model, shape, clip_denoised=clip_denoised, **model_kwargs
+        )
 
     def forward(
         self,
