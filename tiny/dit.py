@@ -261,7 +261,7 @@ class PointCloudDiT(nn.Module):
             t = t + c
 
         # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
-        # cls_token = t.unsqueeze(1)  # (B, 1, h_s)
+        cls_token = t.unsqueeze(1)  # (B, 1, h_s)
         # x = torch.cat([cls_token, x], dim=1)
         x = x
 
@@ -305,3 +305,39 @@ class UnconditionalPointCloudDiT(PointCloudDiT):
 
     def forward(self, x: torch.Tensor, t: torch.Tensor, **model_kwargs):
         return super().forward(x, t)
+
+
+class ClassConditionalPointCloudDiT(PointCloudDiT):
+    """
+    Point Cloud DiT for Class Conditional Diffusion
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        in_channels: int,
+        depth: int,
+        hidden_size: int,
+        num_heads: int,
+        num_classes: int,
+        class_embedding_dim: int = None,
+        mlp_ratio: int = 4,
+        learn_sigma: bool = False,
+    ):
+        super().__init__(
+            input_size=input_size,
+            in_channels=in_channels,
+            depth=depth,
+            hidden_size=hidden_size,
+            cond_embedding_dim=class_embedding_dim,
+            num_heads=num_heads,
+            mlp_ratio=mlp_ratio,
+            learn_sigma=learn_sigma,
+        )
+
+        self.class_embedding = nn.Embedding(num_classes, class_embedding_dim)
+
+    def forward(
+        self, x: torch.Tensor, t: torch.Tensor, classes: torch.Tensor, **model_kwargs
+    ):
+        pass

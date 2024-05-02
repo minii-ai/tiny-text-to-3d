@@ -10,7 +10,10 @@ class SineDataset(BaseDataset):
         self.size = size
 
         X = torch.linspace(-torch.pi, torch.pi, num_points)
+        # X = torch.linspace(-1, 1, num_points)
 
+        # data = torch.stack([X, X], dim=1)
+        # data = torch.stack([X, X.exp()], dim=1)
         data = torch.stack([X, X.sin()], dim=1)
         self.data = {"data": data, "label": 0, "text": "sine"}
 
@@ -27,8 +30,11 @@ class CosineDataset(BaseDataset):
         self.num_points = num_points
         self.size = size
 
+        # X = torch.linspace(-1, 1, num_points)
         X = torch.linspace(-torch.pi, torch.pi, num_points)
 
+        # data = torch.stack([X, -X], dim=1)
+        # data = torch.stack([X, -X], dim=1)
         data = torch.stack([X, X.cos()], dim=1)
         self.data = {"data": data, "label": 1, "text": "cosine"}
 

@@ -16,6 +16,7 @@ matplotlib = "^3.8.4"
 einops = "^0.8.0"
 wandb = "^0.16.6"
 opencv-python = "^4.9.0.80"
+imageio = "^2.34.1"
 
 
 [build-system]

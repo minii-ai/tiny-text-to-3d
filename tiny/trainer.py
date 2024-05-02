@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from .ddpm import PointCloudDDPM
+from .utils import count_parameters
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -27,6 +28,7 @@ class PointCloudDiffusionTrainer:
         device=device,
         checkpoint_fn=None,
         checkpoint_every: int = 1,
+        checkpoint_train_end=None,
     ):
         self.ddpm = ddpm
         self.train_loader = train_loader
@@ -38,12 +40,14 @@ class PointCloudDiffusionTrainer:
         self.device = device
         self.checkpoint_fn = checkpoint_fn
         self.checkpoint_every = checkpoint_every
+        self.checkpoint_train_end = checkpoint_train_end
 
         self.optimizer = torch.optim.Adam(ddpm.parameters(), lr=lr)
 
     def train_step(self, batch: dict):
         if self.model_type == "uncond":
             data = batch["data"].to(self.device)
+            data = data.permute(0, 2, 1)
             loss = self.ddpm.get_loss(data)
 
         # backprop
@@ -54,6 +58,8 @@ class PointCloudDiffusionTrainer:
         return loss
 
     def train(self):
+        print(f"[INFO] Model Parameters: {count_parameters(self.ddpm)}")
+
         self.ddpm.train()
         self.ddpm.to(self.device)
 
@@ -86,5 +92,8 @@ class PointCloudDiffusionTrainer:
         if self.save_dir:
             weights_save_path = os.path.join(self.save_dir, "weights.pt")
             torch.save(self.ddpm.model.state_dict(), weights_save_path)
+
+        if self.checkpoint_train_end:
+            self.checkpoint_train_end({"ddpm": self.ddpm})
 
         return losses

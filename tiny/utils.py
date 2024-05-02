@@ -1,6 +1,7 @@
 import io
 
 import cv2
+import imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -117,6 +118,14 @@ def create_video_from_pil(images: list[Image.Image], video_name: str, fps: int):
 
     # Release the video writer
     video.release()
+
+
+def create_gif_from_pil(images: list[Image.Image], output_gif: str, fps: int):
+    # Convert PIL Image objects to a format that imageio can use
+    frames = [image.convert("RGB") for image in images]
+
+    # Save the frames as a gif
+    imageio.mimsave(output_gif, frames, fps=fps)
 
 
 def count_parameters(model: nn.Module):
