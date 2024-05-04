@@ -14,7 +14,7 @@ class SineDataset(BaseDataset):
 
         # data = torch.stack([X, X], dim=1)
         # data = torch.stack([X, X.exp()], dim=1)
-        data = torch.stack([X, X.sin()], dim=1)
+        data = torch.stack([X / torch.pi, X.sin()], dim=1)
         self.data = {"data": data, "label": 0, "text": "sine"}
 
     def __len__(self):
@@ -35,7 +35,7 @@ class CosineDataset(BaseDataset):
 
         # data = torch.stack([X, -X], dim=1)
         # data = torch.stack([X, -X], dim=1)
-        data = torch.stack([X, X.cos()], dim=1)
+        data = torch.stack([X / torch.pi, X.cos()], dim=1)
         self.data = {"data": data, "label": 1, "text": "cosine"}
 
     def __len__(self):

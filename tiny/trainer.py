@@ -29,6 +29,7 @@ class PointCloudDiffusionTrainer:
         checkpoint_fn=None,
         checkpoint_every: int = 1,
         checkpoint_train_end=None,
+        a=False,
     ):
         self.ddpm = ddpm
         self.train_loader = train_loader
@@ -41,13 +42,15 @@ class PointCloudDiffusionTrainer:
         self.checkpoint_fn = checkpoint_fn
         self.checkpoint_every = checkpoint_every
         self.checkpoint_train_end = checkpoint_train_end
+        self.a = a
 
         self.optimizer = torch.optim.Adam(ddpm.parameters(), lr=lr)
 
     def train_step(self, batch: dict):
         if self.model_type == "uncond":
             data = batch["data"].to(self.device)
-            data = data.permute(0, 2, 1)
+            if self.a:
+                data = data.permute(0, 2, 1)
             loss = self.ddpm.get_loss(data)
 
         # backprop

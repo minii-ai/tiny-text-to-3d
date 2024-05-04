@@ -163,17 +163,22 @@ class DiTBlock(nn.Module):
             shift_scale_gate.chunk(6, dim=-1)
         )  # (B, D) x 6
 
-        h = x
-        x = self.layernorm1(x)  # (B, L, D)
-        x = modulate(x, msa_shift, msa_scale)  # scale and shift
-        x = self.msa(x)  # multi-head self attention
-        x = h + msa_gate.unsqueeze(1) * x  # gated residual connection
+        # x = modulate(x, msa_shift, msa_scale)  # scale and shift
+        # x = self.msa(x)  # multi-head self attention
+        # x = h + msa_gate.unsqueeze(1) * x  # gated residual connection
 
-        h = x
-        x = self.layernorm2(x)
-        x = modulate(x, mlp_shift, mlp_scale)  # scale and shift
-        x = self.mlp(x)  # feed forward
-        x = h + mlp_gate.unsqueeze(1) * x  # gated residual connection
+        x = x + msa_gate.unsqueeze(1) * self.msa(
+            modulate(self.layernorm1(x), msa_shift, msa_scale)
+        )
+        x = x + mlp_gate.unsqueeze(1) * self.mlp(
+            modulate(self.layernorm2(x), mlp_shift, mlp_scale)
+        )
+
+        # h = x
+        # x = self.layernorm2(x)
+        # x = modulate(x, mlp_shift, mlp_scale)  # scale and shift
+        # x = self.mlp(x)  # feed forward
+        # x = h + mlp_gate.unsqueeze(1) * x  # gated residual connection
 
         return x
 
@@ -190,6 +195,11 @@ class OutLayer(nn.Module):
             nn.SiLU(), nn.Linear(in_features, 2 * in_features)
         )
         self.linear = nn.Linear(in_features, out_features)
+
+        # zero init
+        with torch.no_grad():
+            self.linear.weight.zero_()
+            self.linear.bias.data.zero_()
 
     def forward(self, x: torch.Tensor):
         x = self.layernorm(x)
@@ -262,7 +272,7 @@ class PointCloudDiT(nn.Module):
 
         # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
         cls_token = t.unsqueeze(1)  # (B, 1, h_s)
-        # x = torch.cat([cls_token, x], dim=1)
+        x = torch.cat([cls_token, x], dim=1)
         x = x
 
         # pass thr. dit blocks
@@ -270,7 +280,7 @@ class PointCloudDiT(nn.Module):
             x = dit_block(x, t)
 
         # remove cls tokens
-        # x = x[:, 1:, :]
+        x = x[:, 1:, :]
 
         # final linear layer
         x = self.out_layer(x)
