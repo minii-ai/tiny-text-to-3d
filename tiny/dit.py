@@ -163,22 +163,17 @@ class DiTBlock(nn.Module):
             shift_scale_gate.chunk(6, dim=-1)
         )  # (B, D) x 6
 
-        # x = modulate(x, msa_shift, msa_scale)  # scale and shift
-        # x = self.msa(x)  # multi-head self attention
-        # x = h + msa_gate.unsqueeze(1) * x  # gated residual connection
-
+        # gated residual connection
         x = x + msa_gate.unsqueeze(1) * self.msa(
-            modulate(self.layernorm1(x), msa_shift, msa_scale)
+            modulate(
+                self.layernorm1(x), msa_shift, msa_scale
+            )  # scale and shift -> modulate -> multi-head self-attention
         )
         x = x + mlp_gate.unsqueeze(1) * self.mlp(
-            modulate(self.layernorm2(x), mlp_shift, mlp_scale)
+            modulate(
+                self.layernorm2(x), mlp_shift, mlp_scale
+            )  # scale and shift -> modulate -> mlp
         )
-
-        # h = x
-        # x = self.layernorm2(x)
-        # x = modulate(x, mlp_shift, mlp_scale)  # scale and shift
-        # x = self.mlp(x)  # feed forward
-        # x = h + mlp_gate.unsqueeze(1) * x  # gated residual connection
 
         return x
 
@@ -280,7 +275,7 @@ class PointCloudDiT(nn.Module):
             x = dit_block(x, t)
 
         # remove cls tokens
-        x = x[:, 1:, :]
+        x = x[:, -self.input_size :, :]
 
         # final linear layer
         x = self.out_layer(x)
@@ -334,6 +329,7 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
         mlp_ratio: int = 4,
         learn_sigma: bool = False,
     ):
+        assert class_embedding_dim is not None, "Class embedding dim must be provided"
         super().__init__(
             input_size=input_size,
             in_channels=in_channels,
@@ -345,9 +341,22 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
             learn_sigma=learn_sigma,
         )
 
-        self.class_embedding = nn.Embedding(num_classes, class_embedding_dim)
+        self.class_embedding = nn.Embedding(
+            num_classes, class_embedding_dim
+        )  # add 1 for classifier-free guidance
 
     def forward(
-        self, x: torch.Tensor, t: torch.Tensor, classes: torch.Tensor, **model_kwargs
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor,
+        classes: torch.Tensor = None,
+        **model_kwargs
     ):
-        pass
+        # classes is optional, if not provided, this becomes an unconditional point cloud DiT
+
+        if classes is not None:
+            class_embedding = self.class_embedding(classes)
+
+            return super().forward(x, t, cond=class_embedding)
+
+        return super().forward(x, t)
