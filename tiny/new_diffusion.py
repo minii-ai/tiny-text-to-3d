@@ -3,6 +3,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops import reduce
 from tqdm import tqdm
 
 ScheduleType = Literal["linear", "cosine"]
@@ -42,6 +43,13 @@ def extract(arr: torch.Tensor, t: torch.Tensor, shape: torch.Size):
     B = t.shape[0]
     val = arr[t]
     return val.reshape(B, *(1 for _ in range(len(shape) - 1)))
+
+
+def make_broadcastable(val: torch.Tensor, shape: torch.Size):
+    """Expand val to be broadcastable to shape. Unsqueezes dimensions to the right."""
+    while val.dim() < len(shape):
+        val = val.unsqueeze(-1)
+    return val
 
 
 class Diffusion(nn.Module):
@@ -113,13 +121,22 @@ class Diffusion(nn.Module):
 
         return x_start
 
-    def p_sample(self, model, x_t: torch.Tensor, t: torch.Tensor):
+    def p_sample(
+        self, model, x_t: torch.Tensor, t: torch.Tensor, clip_denoised: bool = False
+    ):
         pred_noise = model(x_t, t)
         pred_x_start = self.predict_x_start(x_t, t, pred_noise)
+
+        if clip_denoised:
+            pred_x_start = pred_x_start.clip(-1.0, 1.0)
+
         mean, variance = self.q_posterior_mean_variance(x_t, pred_x_start, t)
+        nonzero_mask = make_broadcastable(t != 0, variance.shape)
+
+        # print(nonzero_mask.shape)
 
         eps = torch.randn_like(x_t)
-        prev_x = mean + variance**0.5 * eps
+        prev_x = mean + variance**0.5 * nonzero_mask * eps
 
         return prev_x
 
@@ -131,7 +148,7 @@ class Diffusion(nn.Module):
 
         for t in tqdm(timesteps):
             t = torch.full((B,), t, device=self.device)
-            x_t = self.p_sample(model, x_t, t)
+            x_t = self.p_sample(model, x_t, t, clip_denoised=clip_denoised)
 
         return x_t
 
@@ -141,6 +158,10 @@ class Diffusion(nn.Module):
     def training_losses(self, model: nn.Module, x_start: torch.Tensor, t: torch.Tensor):
         noise = torch.randn_like(x_start)
         x_t = self.q_sample(x_start, t, noise)
-        pred_noise = model(x_t, t)
 
-        return F.mse_loss(pred_noise, noise)
+        pred_noise = model(x_t, t)
+        mse_losses = F.mse_loss(pred_noise, noise, reduction="none")
+
+        loss = reduce(mse_losses, "b ... -> b", "mean").mean()
+
+        return loss
