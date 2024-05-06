@@ -3,7 +3,8 @@ Adapted from: https://github.com/openai/openai/blob/55363aa496049423c37124b440e9
 """
 
 import math
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence,
+                    Tuple, Union)
 
 import torch
 import torch.nn as nn
@@ -293,6 +294,7 @@ class PointDiffusionTransformer(nn.Module):
             for emb, as_token in cond_as_token
             if as_token
         ]
+
         if len(extra_tokens):
             h = torch.cat(extra_tokens + [h], dim=1)
 
