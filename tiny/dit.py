@@ -356,7 +356,6 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
 
         if classes is not None:
             class_embedding = self.class_embedding(classes)
-
             return super().forward(x, t, cond=class_embedding)
 
         return super().forward(x, t)
