@@ -134,72 +134,6 @@ class Diffusion(nn.Module):
         return x_start
 
     def p_sample(
-        self, model, x_t: torch.Tensor, t: torch.Tensor, clip_denoised: bool = False
-    ):
-        """
-        Samples x_{t-1} ~ p(x_{t-1} | x_t, t)
-        """
-        # predict the noise added to x_start
-        pred_noise = model(x_t, t)
-
-        # predict x_start
-        pred_x_start = self.predict_x_start(x_t, t, pred_noise)
-
-        if clip_denoised:
-            pred_x_start = pred_x_start.clip(-1.0, 1.0)
-
-        # get mean and variance from q(x_{t-1} | x_t, pred_x_start)
-        mean, variance = self.q_posterior_mean_variance(x_t, pred_x_start, t)
-
-        # zero out variance at timestep t = 0
-        nonzero_mask = make_broadcastable(t != 0, variance.shape)
-
-        # sample
-        eps = torch.randn_like(x_t)
-        prev_x = mean + variance**0.5 * nonzero_mask * eps
-
-        return prev_x
-
-    @torch.no_grad()
-    def p_sample_loop(self, model, shape: tuple, clip_denoised: bool = False):
-        for sample in self.p_sample_loop_progressive(
-            model, shape, clip_denoised=clip_denoised
-        ):
-            pass
-
-        return sample
-
-    @torch.no_grad()
-    def p_sample_loop_progressive(
-        self, model, shape, clip_denoised: bool = False, **kwargs
-    ):
-        """
-        Yields sample at each timestep during the sampling loop
-        """
-
-        B = shape[0]
-        x_t = torch.randn(*shape, device=self.device)
-        timesteps = range(self.num_timesteps)[::-1]
-
-        for t in tqdm(timesteps):
-            t = torch.full((B,), t, device=self.device)
-            x_t = self.p_sample(model, x_t, t, clip_denoised=clip_denoised, **kwargs)
-            yield x_t
-
-    def training_losses(self, model: nn.Module, x_start: torch.Tensor, t: torch.Tensor):
-        noise = torch.randn_like(x_start)
-        x_t = self.q_sample(x_start, t, noise)
-
-        pred_noise = model(x_t, t)
-        mse_losses = F.mse_loss(pred_noise, noise, reduction="none")
-
-        loss = reduce(mse_losses, "b ... -> b", "mean").mean()
-
-        return loss
-
-
-class ConditionalDiffusion(Diffusion):
-    def p_sample(
         self,
         model,
         x_t: torch.Tensor,
@@ -209,16 +143,21 @@ class ConditionalDiffusion(Diffusion):
         clip_denoised: bool = False,
     ):
         """
-        Samples x_{t-1} ~ p(x_{t-1} | x_t, t, c)
+        Samples x_{t-1} ~ p(x_{t-1} | x_t, t) or p(x_{t-1} | x_t, t, c) if cond is provided.
         """
-        # predict unconditional and conditional noise
-        pred_cond_noise = model(x_t, t, cond)
-        pred_uncond_noise = model(x_t, t)
+        if cond is not None:
+            # predict unconditional and conditional noise
+            pred_cond_noise = model(x_t, t, cond)
+            pred_uncond_noise = model(x_t, t)
 
-        # classifier-free guidance
-        pred_noise = (
-            1 - guidance_scale
-        ) * pred_uncond_noise + guidance_scale * pred_cond_noise
+            # classifier-free guidance
+            pred_noise = (
+                1 - guidance_scale
+            ) * pred_uncond_noise + guidance_scale * pred_cond_noise
+
+        else:
+            # predict the noise added to x_start
+            pred_noise = model(x_t, t)
 
         # predict x_start
         pred_x_start = self.predict_x_start(x_t, t, pred_noise)
@@ -244,19 +183,43 @@ class ConditionalDiffusion(Diffusion):
         model,
         shape: tuple,
         cond: torch.Tensor = None,
-        guidance_scale: float = 1.0,
         clip_denoised: bool = False,
     ):
         for sample in self.p_sample_loop_progressive(
-            model,
-            shape,
-            cond=cond,
-            guidance_scale=guidance_scale,
-            clip_denoised=clip_denoised,
+            model, shape, cond=cond, clip_denoised=clip_denoised
         ):
             pass
 
         return sample
+
+    @torch.no_grad()
+    def p_sample_loop_progressive(
+        self,
+        model,
+        shape,
+        cond: torch.Tensor = None,
+        guidance_scale: float = 1.0,
+        clip_denoised: bool = False,
+    ):
+        """
+        Yields sample at each timestep during the sampling loop
+        """
+
+        B = shape[0]
+        x_t = torch.randn(*shape, device=self.device)
+        timesteps = range(self.num_timesteps)[::-1]
+
+        for t in tqdm(timesteps):
+            t = torch.full((B,), t, device=self.device)
+            x_t = self.p_sample(
+                model,
+                x_t,
+                t,
+                cond=cond,
+                guidance_scale=guidance_scale,
+                clip_denoised=clip_denoised,
+            )
+            yield x_t
 
     def training_losses(
         self,
@@ -268,9 +231,12 @@ class ConditionalDiffusion(Diffusion):
         noise = torch.randn_like(x_start)
         x_t = self.q_sample(x_start, t, noise)
 
-        pred_noise = model(x_t, t, cond)
-        mse_losses = F.mse_loss(pred_noise, noise, reduction="none")
+        if cond is not None:
+            pred_noise = model(x_t, t, cond)
+        else:
+            pred_noise = model(x_t, t)
 
+        mse_losses = F.mse_loss(pred_noise, noise, reduction="none")
         loss = reduce(mse_losses, "b ... -> b", "mean").mean()
 
         return loss
