@@ -70,7 +70,7 @@ class PointCloudDiT(nn.Module):
 
         return cond
 
-    def forward_with_cls_and_cond(
+    def _forward_with_cls_and_cond(
         self,
         x: torch.Tensor,
         t: torch.Tensor,
@@ -78,8 +78,12 @@ class PointCloudDiT(nn.Module):
         cond: torch.Tensor = None,
     ):
         """
+        Adds condition embedding to time
+
         Params:
-            - cond: prepared cond vector, result of self._prepare_cond
+            - x: data projected to hidden size
+            - t: timestep embedding projected to hidden size
+            - cond: prepared cond vector, result of cond_embedding
         """
         if cond is not None:
             t = t + cond
@@ -121,4 +125,4 @@ class PointCloudDiT(nn.Module):
         else:
             cls_token = t.unsqueeze(1)
 
-        return self.forward_with_cls_and_cond(x, t, cls=cls_token, cond=cond)
+        return self._forward_with_cls_and_cond(x, t, cls=cls_token, cond=cond)

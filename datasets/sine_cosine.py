@@ -10,12 +10,93 @@ class SineDataset(BaseDataset):
         self.size = size
 
         X = torch.linspace(-torch.pi, torch.pi, num_points)
-        # X = torch.linspace(-1, 1, num_points)
-
-        # data = torch.stack([X, X], dim=1)
-        # data = torch.stack([X, X.exp()], dim=1)
         data = torch.stack([X / torch.pi, X.sin()], dim=1)
+
         self.data = {"data": data, "label": 0, "text": "sine"}
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx: int):
+        return self.data
+
+
+class SineSuperResDataset(BaseDataset):
+    def __init__(
+        self, num_points: int = 128, low_res_points: int = 32, size: int = 128
+    ):
+        super().__init__()
+        self.num_points = num_points
+        self.size = size
+
+        X = torch.linspace(-torch.pi, torch.pi, num_points)
+        high_res_data = torch.stack([X / torch.pi, X.sin()], dim=1)
+
+        Y = torch.linspace(-torch.pi, torch.pi, low_res_points)
+        low_res_data = torch.stack([Y / torch.pi, Y.sin()], dim=1)
+
+        self.data = {
+            "high_res": high_res_data,
+            "low_res": low_res_data,
+            "label": 0,
+            "text": "sine",
+        }
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx: int):
+        return self.data
+
+
+class CosineSuperResDataset(BaseDataset):
+    def __init__(
+        self, num_points: int = 128, low_res_points: int = 32, size: int = 128
+    ):
+        super().__init__()
+        self.num_points = num_points
+        self.size = size
+
+        X = torch.linspace(-torch.pi, torch.pi, num_points)
+        high_res_data = torch.stack([X / torch.pi, X.cos()], dim=1)
+
+        Y = torch.linspace(-torch.pi, torch.pi, low_res_points)
+        low_res_data = torch.stack([Y / torch.pi, Y.cos()], dim=1)
+
+        self.data = {
+            "high_res": high_res_data,
+            "low_res": low_res_data,
+            "label": 1,
+            "text": "cosine",
+        }
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx: int):
+        return self.data
+
+
+class SineSuperResDataset(BaseDataset):
+    def __init__(
+        self, num_points: int = 128, low_res_points: int = 32, size: int = 128
+    ):
+        super().__init__()
+        self.num_points = num_points
+        self.size = size
+
+        X = torch.linspace(-torch.pi, torch.pi, num_points)
+        high_res_data = torch.stack([X / torch.pi, X.sin()], dim=1)
+
+        Y = torch.linspace(-torch.pi, torch.pi, low_res_points)
+        low_res_data = torch.stack([Y / torch.pi, Y.sin()], dim=1)
+
+        self.data = {
+            "high_res": high_res_data,
+            "low_res": low_res_data,
+            "label": 0,
+            "text": "sine",
+        }
 
     def __len__(self):
         return self.size
@@ -30,12 +111,9 @@ class CosineDataset(BaseDataset):
         self.num_points = num_points
         self.size = size
 
-        # X = torch.linspace(-1, 1, num_points)
         X = torch.linspace(-torch.pi, torch.pi, num_points)
-
-        # data = torch.stack([X, -X], dim=1)
-        # data = torch.stack([X, -X], dim=1)
         data = torch.stack([X / torch.pi, X.cos()], dim=1)
+
         self.data = {"data": data, "label": 1, "text": "cosine"}
 
     def __len__(self):

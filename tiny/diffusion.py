@@ -139,6 +139,7 @@ class Diffusion(nn.Module):
         x_t: torch.Tensor,
         t: torch.Tensor,
         cond: torch.Tensor = None,
+        low_res: torch.Tensor = None,
         guidance_scale: float = 1.0,
         clip_denoised: bool = False,
     ):
@@ -156,8 +157,11 @@ class Diffusion(nn.Module):
             ) * pred_uncond_noise + guidance_scale * pred_cond_noise
 
         else:
-            # predict the noise added to x_start
-            pred_noise = model(x_t, t)
+            if low_res is not None:
+                pred_noise = model(x_t, t, low_res)
+            else:
+                # predict the noise added to x_start
+                pred_noise = model(x_t, t)
 
         # predict x_start
         pred_x_start = self.predict_x_start(x_t, t, pred_noise)
@@ -183,10 +187,11 @@ class Diffusion(nn.Module):
         model,
         shape: tuple,
         cond: torch.Tensor = None,
+        low_res=None,
         clip_denoised: bool = False,
     ):
         for sample in self.p_sample_loop_progressive(
-            model, shape, cond=cond, clip_denoised=clip_denoised
+            model, shape, cond=cond, clip_denoised=clip_denoised, low_res=low_res
         ):
             pass
 
@@ -200,6 +205,7 @@ class Diffusion(nn.Module):
         cond: torch.Tensor = None,
         guidance_scale: float = 1.0,
         clip_denoised: bool = False,
+        low_res=None,
     ):
         """
         Yields sample at each timestep during the sampling loop
@@ -218,6 +224,7 @@ class Diffusion(nn.Module):
                 cond=cond,
                 guidance_scale=guidance_scale,
                 clip_denoised=clip_denoised,
+                low_res=low_res,
             )
             yield x_t
 
