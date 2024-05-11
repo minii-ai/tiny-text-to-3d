@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from open_clip import tokenizer
 
 
 def timestep_embedding(timesteps: torch.Tensor, dim: int, max_period: int = 10000):
@@ -417,6 +416,7 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
             return super().forward(x, t, cond=clip_embedding)
         else:
             return super().forward(x, t)
-        
 
-        
+
+class SuperResPointCloudDiT(PointCloudDiT):
+    pass
