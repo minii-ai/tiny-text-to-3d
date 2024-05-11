@@ -47,23 +47,20 @@ class PointCloudDiT(nn.Module):
     def conditional(self):
         return self.cond_embedding_dim is not None
 
-    def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor = None):
-        assert (
-            x.shape[-2] == self.input_size and x.shape[-1] == self.in_channels
-        ), "Input shape mismatch"
-
-        x = self.x_embed(x)
-        t = self.t_embed(t)
+    def forward_with_cls_and_cond(
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor,
+        cls: torch.Tensor = None,
+        cond: torch.Tensor = None,
+    ):
+        if cls is not None:
+            x = torch.cat([cls, x], dim=1)
 
         # project condition and add it to time embedding
         if cond is not None and self.conditional:
             c = self.c_embed(cond)
             t = t + c
-
-        # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
-        cls_token = t.unsqueeze(1)  # (B, 1, h_s)
-        x = torch.cat([cls_token, x], dim=1)
-        x = x
 
         # pass thr. dit blocks
         for dit_block in self.dit_blocks:
@@ -76,3 +73,16 @@ class PointCloudDiT(nn.Module):
         x = self.out_layer(x)
 
         return x
+
+    def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor = None):
+        assert (
+            x.shape[-2] == self.input_size and x.shape[-1] == self.in_channels
+        ), "Input shape mismatch"
+
+        x = self.x_embed(x)
+        t = self.t_embed(t)
+
+        # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
+        cls_token = t.unsqueeze(1)  # (B, 1, h_s)
+
+        return self.forward_with_cls_and_cond(x, t, cls=cls_token, cond=cond)
