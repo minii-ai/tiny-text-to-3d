@@ -36,6 +36,9 @@ class PointCloudDiT(nn.Module):
 
         if cond_embedding_dim is not None:
             self.c_embed = nn.Linear(cond_embedding_dim, hidden_size)
+            self.null_token = nn.Parameter(
+                torch.zeros(1, cond_embedding_dim), requires_grad=True
+            )
 
         self.dit_blocks = nn.ModuleList(
             [DiTBlock(hidden_size, num_heads, mlp_ratio) for i in range(depth)]
@@ -47,6 +50,26 @@ class PointCloudDiT(nn.Module):
     def conditional(self):
         return self.cond_embedding_dim is not None
 
+    def cond_embedding(self, batch_size: int, cond=None):
+        if self.conditional:
+            if cond is not None:
+                c = self.c_embed(cond)  # (B, c_dim)
+                return c
+            else:
+                # null token for unconditional generation
+                null_token = self.null_token.repeat(batch_size, 1)
+                null_token_embedding = self.c_embed(null_token)
+                return null_token_embedding
+        else:
+            return None
+
+    def prepare_cond(self, cond: torch.Tensor):
+        """
+        Prepare the conditioning vector before calling `forward`.
+        """
+
+        return cond
+
     def forward_with_cls_and_cond(
         self,
         x: torch.Tensor,
@@ -54,13 +77,15 @@ class PointCloudDiT(nn.Module):
         cls: torch.Tensor = None,
         cond: torch.Tensor = None,
     ):
+        """
+        Params:
+            - cond: prepared cond vector, result of self._prepare_cond
+        """
+        if cond is not None:
+            t = t + cond
+
         if cls is not None:
             x = torch.cat([cls, x], dim=1)
-
-        # project condition and add it to time embedding
-        if cond is not None and self.conditional:
-            c = self.c_embed(cond)
-            t = t + c
 
         # pass thr. dit blocks
         for dit_block in self.dit_blocks:
@@ -74,15 +99,26 @@ class PointCloudDiT(nn.Module):
 
         return x
 
-    def forward(self, x: torch.Tensor, t: torch.Tensor, cond: torch.Tensor = None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor,
+        cond: torch.Tensor = None,
+        **model_kwargs
+    ):
         assert (
             x.shape[-2] == self.input_size and x.shape[-1] == self.in_channels
         ), "Input shape mismatch"
 
+        batch_size = x.shape[0]
         x = self.x_embed(x)
         t = self.t_embed(t)
+        cond = self.cond_embedding(batch_size, cond)
 
-        # add time and condition embeddings as an extra tokens to input sequence x (modified technique from Point E)
-        cls_token = t.unsqueeze(1)  # (B, 1, h_s)
+        # add time and condition embeddings as an extra tokens to input sequence x (from Point E)
+        if cond is not None:
+            cls_token = torch.cat([t.unsqueeze(1), cond.unsqueeze(1)], dim=1)
+        else:
+            cls_token = t.unsqueeze(1)
 
         return self.forward_with_cls_and_cond(x, t, cls=cls_token, cond=cond)

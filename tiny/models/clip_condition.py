@@ -52,9 +52,23 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
 
         return text_features
 
-    def forward(self, x: torch.Tensor, t: torch.Tensor, text: list[str] = None):
-        if text is not None:
-            clip_embedding = self.encode_text(text)
+    def prepare_cond(self, cond: list[str] = None):
+        if cond is not None:
+            return self.encode_text(cond)
+        else:
+            return None
+
+    def forward(
+        self, x: torch.Tensor, t: torch.Tensor, clip_embedding: torch.Tensor = None
+    ):
+        if clip_embedding is not None:
             return super().forward(x, t, cond=clip_embedding)
         else:
             return super().forward(x, t)
+
+    # def forward(self, x: torch.Tensor, t: torch.Tensor, text: list[str] = None):
+    #     if text is not None:
+    #         clip_embedding = self.encode_text(text)
+    #         return super().forward(x, t, cond=clip_embedding)
+    #     else:
+    #         return super().forward(x, t)

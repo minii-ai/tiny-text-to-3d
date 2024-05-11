@@ -5,7 +5,6 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .ddpm import PointCloudDDPM
 from .utils import count_parameters
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -18,7 +17,7 @@ class PointCloudDiffusionTrainer:
 
     def __init__(
         self,
-        ddpm: PointCloudDDPM,
+        ddpm,
         train_loader: DataLoader,
         model_type: Literal["uncond"] = "uncond",
         lr: float = 3e-4,

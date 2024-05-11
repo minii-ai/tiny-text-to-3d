@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-from .dit import PointCloudDiT
 from .noise_schedule import NoiseScheduler
 from .sampler import Sampler
 
@@ -10,7 +9,7 @@ class Diffusion(nn.Module):
     def __init__(
         self,
         noise_scheduler: NoiseScheduler,
-        model: PointCloudDiT,
+        model,
         sampler: Sampler,
         shape: tuple,
     ):

@@ -33,9 +33,7 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
             learn_sigma=learn_sigma,
         )
 
-        self.class_embedding = nn.Embedding(
-            num_classes, class_embedding_dim
-        )  # add 1 for classifier-free guidance
+        self.class_embedding = nn.Embedding(num_classes, class_embedding_dim)
 
     def forward(
         self,
@@ -45,7 +43,6 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
         **model_kwargs
     ):
         # classes is optional, if not provided, this becomes an unconditional point cloud DiT
-
         if classes is not None:
             class_embedding = self.class_embedding(classes)
             return super().forward(x, t, cond=class_embedding)
