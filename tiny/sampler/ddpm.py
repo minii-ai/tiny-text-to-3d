@@ -32,6 +32,10 @@ class DDPMSampler(Sampler):
     def device(self):
         return self.q_posterior_mean_coef1.device
 
+    def set_timesteps(self, num_timesteps: int):
+        # for DDPMs, the number of timesteps is fixed to the number of timesteps in the noise schedule
+        pass
+
     def predict_x_start(self, x_t: torch.Tensor, t: torch.Tensor, noise: torch.Tensor):
         sqrt_one_minus_alphas_cumprod = (
             self.noise_scheduler.sqrt_one_minus_alphas_cumprod
@@ -106,61 +110,61 @@ class DDPMSampler(Sampler):
 
         return prev_x
 
-    @torch.no_grad()
-    def sample_loop(
-        self,
-        model,
-        shape: tuple,
-        cond: torch.Tensor = None,
-        num_inference_steps: int = None,
-        clip_denoised: bool = False,
-        guidance_scale: float = 1.0,
-        use_cfg: bool = False,
-    ):
-        for sample in self.sample_loop_progressive(
-            model,
-            shape,
-            cond=cond,
-            clip_denoised=clip_denoised,
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale,
-            use_cfg=use_cfg,
-        ):
-            pass
+    # @torch.no_grad()
+    # def sample_loop(
+    #     self,
+    #     model,
+    #     shape: tuple,
+    #     cond: torch.Tensor = None,
+    #     num_inference_steps: int = None,
+    #     clip_denoised: bool = False,
+    #     guidance_scale: float = 1.0,
+    #     use_cfg: bool = False,
+    # ):
+    #     for sample in self.sample_loop_progressive(
+    #         model,
+    #         shape,
+    #         cond=cond,
+    #         clip_denoised=clip_denoised,
+    #         num_inference_steps=num_inference_steps,
+    #         guidance_scale=guidance_scale,
+    #         use_cfg=use_cfg,
+    #     ):
+    #         pass
 
-        return sample
+    #     return sample
 
-    def sample_loop_progressive(
-        self,
-        model,
-        shape,
-        cond: torch.Tensor = None,
-        num_inference_steps: int = None,
-        guidance_scale: float = 1.0,
-        clip_denoised: bool = False,
-        use_cfg: bool = False,
-    ):
-        """
-        Yields sample at each timestep during the sampling loop
-        """
+    # def sample_loop_progressive(
+    #     self,
+    #     model,
+    #     shape,
+    #     cond: torch.Tensor = None,
+    #     num_inference_steps: int = None,
+    #     guidance_scale: float = 1.0,
+    #     clip_denoised: bool = False,
+    #     use_cfg: bool = False,
+    # ):
+    #     """
+    #     Yields sample at each timestep during the sampling loop
+    #     """
 
-        B = shape[0]
+    #     B = shape[0]
 
-        # start with random gaussian noise
-        x_t = torch.randn(*shape, device=self.device)
-        timesteps = range(self.noise_scheduler.num_timesteps)[::-1]
-        cond = model.prepare_cond(cond)
+    #     # start with random gaussian noise
+    #     x_t = torch.randn(*shape, device=self.device)
+    #     timesteps = range(self.noise_scheduler.num_timesteps)[::-1]
+    #     cond = model.prepare_cond(cond)
 
-        # denoise progressively at each timestep
-        for t in tqdm(timesteps):
-            t = torch.full((B,), t, device=self.device)
-            x_t = self.step(
-                model,
-                x_t,
-                t,
-                cond=cond,
-                guidance_scale=guidance_scale,
-                clip_denoised=clip_denoised,
-                use_cfg=use_cfg,
-            )
-            yield x_t
+    #     # denoise progressively at each timestep
+    #     for t in tqdm(timesteps):
+    #         t = torch.full((B,), t, device=self.device)
+    #         x_t = self.step(
+    #             model,
+    #             x_t,
+    #             t,
+    #             cond=cond,
+    #             guidance_scale=guidance_scale,
+    #             clip_denoised=clip_denoised,
+    #             use_cfg=use_cfg,
+    #         )
+    #         yield x_t
