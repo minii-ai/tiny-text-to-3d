@@ -3,19 +3,34 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import reduce
 
-from .noise_schedule import NoiseScheduler
-from .sampler.base import Sampler
+from .models import model_from_config
+from .noise_schedule import NoiseScheduler, noise_scheduler_from_config
+from .sampler import Sampler, sampler_from_config
 from .tensor_utils import extract
 
 
 class PointCloudDiffusion(nn.Module):
+    @staticmethod
+    def from_config(config: dict):
+        noise_scheduler = noise_scheduler_from_config(config["noise_scheduler"])
+        model = model_from_config(config["model"])
+        sampler = sampler_from_config(config["sampler"], noise_scheduler)
+        min_snr_loss_weight = config.get("min_snr_loss_weight", False)
+        min_snr_gamma = config.get("min_snr_gamma", 5.0)
+
+        return PointCloudDiffusion(
+            noise_scheduler=noise_scheduler,
+            model=model,
+            sampler=sampler,
+            min_snr_loss_weight=min_snr_loss_weight,
+            min_snr_gamma=min_snr_gamma,
+        )
+
     def __init__(
         self,
         noise_scheduler: NoiseScheduler,
         model,
         sampler: Sampler,
-        num_points: int,
-        dim: int,
         min_snr_loss_weight: bool = False,
         min_snr_gamma: float = 5.0,
     ):
@@ -23,8 +38,8 @@ class PointCloudDiffusion(nn.Module):
         self.noise_scheduler = noise_scheduler
         self.model = model
         self.sampler = sampler
-        self.num_points = num_points
-        self.dim = dim
+        self.num_points = model.num_points
+        self.dim = model.dim
 
         # https://arxiv.org/pdf/2303.09556
         if min_snr_loss_weight:
@@ -38,6 +53,10 @@ class PointCloudDiffusion(nn.Module):
 
         self.register_buffer("loss_weights", loss_weights)
 
+    @property
+    def device(self):
+        return self.loss_weights.device
+
     def loss(self, x_start: torch.Tensor, cond=None):
         """
         Loss between predicted noise and true noise.
@@ -47,9 +66,11 @@ class PointCloudDiffusion(nn.Module):
         B = x_start.shape[0]
 
         # add noise to x_start
-        t = torch.randint(0, T, (B,)).long().to("cuda")
+        t = torch.randint(0, T, (B,)).long().to(self.device)
         noise = torch.randn_like(x_start)
         x_t = self.noise_scheduler.add_noise(x_start, t, noise)
+
+        cond = self.model.prepare_cond(cond).to(self.device)
 
         # predict noise
         if cond is not None:

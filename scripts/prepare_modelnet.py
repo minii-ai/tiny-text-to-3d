@@ -48,6 +48,22 @@ def get_mesh_paths(root_dir: str) -> list[str]:
     return mesh_paths
 
 
+def normalize_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
+    # Calculate the center of the bounding box
+    center = mesh.bounds.mean(axis=0)
+
+    # Translate the mesh to center it at the origin
+    mesh.apply_translation(-center)
+
+    # Calculate the scale factor to normalize the mesh to fit in [-1, 1]
+    scale_factor = 2 / (mesh.bounds.ptp(axis=0).max())
+
+    # Scale the mesh
+    mesh.apply_scale(scale_factor)
+
+    return mesh
+
+
 def worker(args):
     queue, n_low_res_samples, n_high_res_samples, low_res_dir, high_res_dir = (
         args["queue"],
@@ -60,6 +76,10 @@ def worker(args):
         try:
             mesh_path = queue.get()
             mesh = trimesh.load(mesh_path, force="mesh")
+
+            # normalize mesh
+            mesh = normalize_mesh(mesh)
+            mesh.export(mesh_path)
 
             todos = zip(
                 [n_low_res_samples, n_high_res_samples],

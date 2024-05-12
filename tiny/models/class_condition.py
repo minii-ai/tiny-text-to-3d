@@ -11,8 +11,8 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
 
     def __init__(
         self,
-        input_size: int,
-        in_channels: int,
+        num_points: int,
+        dim: int,
         depth: int,
         hidden_size: int,
         num_heads: int,
@@ -23,8 +23,8 @@ class ClassConditionalPointCloudDiT(PointCloudDiT):
     ):
         assert class_embedding_dim is not None, "Class embedding dim must be provided"
         super().__init__(
-            input_size=input_size,
-            in_channels=in_channels,
+            num_points=num_points,
+            dim=dim,
             depth=depth,
             hidden_size=hidden_size,
             cond_embedding_dim=class_embedding_dim,

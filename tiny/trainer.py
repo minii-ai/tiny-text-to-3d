@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from .diffusion import PointCloudDiffusion
 from .utils import count_parameters
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -17,36 +18,45 @@ class PointCloudDiffusionTrainer:
 
     def __init__(
         self,
-        ddpm,
+        diffusion: PointCloudDiffusion,
         train_loader: DataLoader,
         lr: float = 3e-4,
         num_epochs: int = 10,
         resume_checkpoint: bool = False,
         save_dir: str = None,
         device=device,
+        get_batch_fn=None,
         checkpoint_fn=None,
         checkpoint_every: int = 1,
         checkpoint_train_end=None,
     ):
-        self.ddpm = ddpm
+        assert get_batch_fn is not None, "get_batch_fn must be provided"
+
+        self.diffusion = diffusion
         self.train_loader = train_loader
         self.lr = lr
         self.num_epochs = num_epochs
         self.resume_checkpoint = resume_checkpoint
         self.save_dir = save_dir
         self.device = device
+        self.get_batch_fn = get_batch_fn
         self.checkpoint_fn = checkpoint_fn
         self.checkpoint_every = checkpoint_every
         self.checkpoint_train_end = checkpoint_train_end
 
-        self.optimizer = torch.optim.Adam(ddpm.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(diffusion.parameters(), lr=lr)
 
     def train_step(self, batch: dict):
-        if self.model_type == "uncond":
-            data = batch["data"].to(self.device)
-            if self.a:
-                data = data.permute(0, 2, 1)
-            loss = self.ddpm.get_loss(data)
+        # get data and cond from batch
+        batch = self.get_batch_fn(batch)
+        data = batch["data"].to(self.device)
+        cond = batch.get("cond", None)
+
+        if hasattr(cond, "to"):
+            cond = cond.to(self.device)
+
+        # get loss
+        loss = self.diffusion.loss(data, cond)
 
         # backprop
         self.optimizer.zero_grad()
@@ -56,10 +66,10 @@ class PointCloudDiffusionTrainer:
         return loss
 
     def train(self):
-        print(f"[INFO] Model Parameters: {count_parameters(self.ddpm)}")
+        print(f"[INFO] Model Parameters: {count_parameters(self.diffusion.model)}")
 
-        self.ddpm.train()
-        self.ddpm.to(self.device)
+        self.diffusion.train()
+        self.diffusion.to(self.device)
 
         num_iters = len(self.train_loader) * self.num_epochs
         losses = []
@@ -88,10 +98,10 @@ class PointCloudDiffusionTrainer:
                     self.checkpoint_fn(data)
 
         if self.save_dir:
-            weights_save_path = os.path.join(self.save_dir, "weights.pt")
-            torch.save(self.ddpm.model.state_dict(), weights_save_path)
+            weights_save_path = os.path.join(self.save_dir, "diffusion.pt")
+            torch.save(self.diffusion.state_dict(), weights_save_path)
 
         if self.checkpoint_train_end:
-            self.checkpoint_train_end({"ddpm": self.ddpm})
+            self.checkpoint_train_end({"diffusion": self.diffusion})
 
         return losses

@@ -36,6 +36,10 @@ def create_noise_schedule(schedule_type: ScheduleType, num_timesteps: int):
         raise NotImplementedError(f"Schedule type {schedule_type} not implemented.")
 
 
+def noise_scheduler_from_config(config: dict):
+    return NoiseScheduler(**config)
+
+
 class NoiseScheduler(nn.Module):
     """
     Noise Schedule for Diffusion Models. Implements linear and cosine noise schedule from

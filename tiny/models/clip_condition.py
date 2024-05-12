@@ -11,8 +11,8 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
 
     def __init__(
         self,
-        input_size: int,
-        in_channels: int,
+        num_points: int,
+        dim: int,
         depth: int,
         hidden_size: int,
         num_heads: int,
@@ -25,8 +25,8 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
         clip_embedding_dim = clip.visual.output_dim
 
         super().__init__(
-            input_size=input_size,
-            in_channels=in_channels,
+            num_points=num_points,
+            dim=dim,
             depth=depth,
             hidden_size=hidden_size,
             num_heads=num_heads,

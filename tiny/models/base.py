@@ -11,8 +11,8 @@ class PointCloudDiT(nn.Module):
 
     def __init__(
         self,
-        input_size: int,
-        in_channels: int,
+        num_points: int,
+        dim: int,
         depth: int,
         hidden_size: int,
         num_heads: int,
@@ -21,17 +21,17 @@ class PointCloudDiT(nn.Module):
         learn_sigma: bool = False,
     ):
         super().__init__()
-        self.input_size = input_size
-        self.in_channels = in_channels
+        self.num_points = num_points
+        self.dim = dim
         self.depth = depth
         self.hidden_size = hidden_size
         self.num_heads = num_heads
         self.cond_embedding_dim = cond_embedding_dim
         self.mlp_ratio = mlp_ratio
-        self.out_channels = in_channels * 2 if learn_sigma else in_channels
+        self.out_channels = dim * 2 if learn_sigma else dim
         self.learn_sigma = learn_sigma
 
-        self.x_embed = nn.Linear(in_channels, hidden_size)
+        self.x_embed = nn.Linear(dim, hidden_size)
         self.t_embed = TimestepEmbedding(hidden_size)
 
         if cond_embedding_dim is not None:
@@ -96,7 +96,7 @@ class PointCloudDiT(nn.Module):
             x = dit_block(x, t)
 
         # remove cls tokens
-        x = x[:, -self.input_size :, :]
+        x = x[:, -self.num_points :, :]
 
         # final linear layer
         x = self.out_layer(x)
@@ -111,7 +111,7 @@ class PointCloudDiT(nn.Module):
         **model_kwargs
     ):
         assert (
-            x.shape[-2] == self.input_size and x.shape[-1] == self.in_channels
+            x.shape[-2] == self.num_points and x.shape[-1] == self.dim
         ), "Input shape mismatch"
 
         batch_size = x.shape[0]
