@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from einops import reduce
 
 from .noise_schedule import NoiseScheduler
-from .sampler import Sampler
+from .sampler.base import Sampler
 
 
 class PointCloudDiffusion(nn.Module):
@@ -44,8 +44,26 @@ class PointCloudDiffusion(nn.Module):
 
         return loss
 
-    def sample_loop():
-        pass
+    @torch.inference_mode()
+    def sample_loop(
+        self,
+        batch_size: int = 1,
+        cond=None,
+        clip_denoised: bool = False,
+        num_inference_steps: int = 1000,
+        guidance_scale: float = 1.0,
+        use_cfg: bool = False,
+    ):
+        shape = (batch_size, self.num_points, self.dim)
+        return self.sampler.sample_loop(
+            self.model,
+            shape=shape,
+            cond=cond,
+            clip_denoised=clip_denoised,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            use_cfg=use_cfg,
+        )
 
     def sample_loop_progressive():
         pass
@@ -53,7 +71,17 @@ class PointCloudDiffusion(nn.Module):
     def forward(
         self,
         batch_size: int = 1,
+        cond=None,
+        clip_denoised: bool = False,
         num_inference_steps: int = 1000,
         guidance_scale: float = 1.0,
+        use_cfg: bool = False,
     ):
-        pass
+        return self.sample_loop(
+            batch_size=batch_size,
+            cond=cond,
+            clip_denoised=clip_denoised,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            use_cfg=use_cfg,
+        )
