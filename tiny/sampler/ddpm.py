@@ -63,7 +63,7 @@ class DDPMSampler(Sampler):
 
         return mean, variance
 
-    def step(
+    def model_prediction(
         self,
         model,
         x_t: torch.Tensor,
@@ -73,10 +73,6 @@ class DDPMSampler(Sampler):
         clip_denoised: bool = False,
         use_cfg: bool = False,
     ):
-        """
-        Samples x_{t-1} ~ p(x_{t-1} | x_t, t) or p(x_{t-1} | x_t, t, c) if cond is provided.
-        """
-
         if use_cfg:
             # predict unconditional and conditional noise
             pred_cond_noise = model(x_t, t, cond)
@@ -98,8 +94,56 @@ class DDPMSampler(Sampler):
         if clip_denoised:
             pred_x_start = pred_x_start.clip(-1.0, 1.0)
 
+        return {"pred_noise": pred_noise, "pred_x_start": pred_x_start}
+
+    def p_mean_variance(
+        self,
+        model,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        cond=None,
+        guidance_scale: float = 1.0,
+        clip_denoised: bool = False,
+        use_cfg: bool = False,
+    ):
+        model_pred = self.model_prediction(
+            model,
+            x_t=x_t,
+            t=t,
+            cond=cond,
+            guidance_scale=guidance_scale,
+            clip_denoised=clip_denoised,
+            use_cfg=use_cfg,
+        )
+        pred_x_start = model_pred["pred_x_start"]
+
         # get mean and variance from q(x_{t-1} | x_t, pred_x_start)
         mean, variance = self.q_posterior_mean_variance(x_t, pred_x_start, t)
+
+        return mean, variance
+
+    def step(
+        self,
+        model,
+        x_t: torch.Tensor,
+        t: torch.Tensor,
+        cond=None,
+        guidance_scale: float = 1.0,
+        clip_denoised: bool = False,
+        use_cfg: bool = False,
+    ):
+        """
+        Samples x_{t-1} ~ p(x_{t-1} | x_t, t) or p(x_{t-1} | x_t, t, c) if cond is provided.
+        """
+        mean, variance = self.p_mean_variance(
+            model,
+            x_t=x_t,
+            t=t,
+            cond=cond,
+            guidance_scale=guidance_scale,
+            clip_denoised=clip_denoised,
+            use_cfg=use_cfg,
+        )
 
         # zero out variance at timestep t = 0
         nonzero_mask = make_broadcastable(t != 0, variance.shape)
@@ -109,62 +153,3 @@ class DDPMSampler(Sampler):
         prev_x = mean + variance**0.5 * nonzero_mask * eps
 
         return prev_x
-
-    # @torch.no_grad()
-    # def sample_loop(
-    #     self,
-    #     model,
-    #     shape: tuple,
-    #     cond: torch.Tensor = None,
-    #     num_inference_steps: int = None,
-    #     clip_denoised: bool = False,
-    #     guidance_scale: float = 1.0,
-    #     use_cfg: bool = False,
-    # ):
-    #     for sample in self.sample_loop_progressive(
-    #         model,
-    #         shape,
-    #         cond=cond,
-    #         clip_denoised=clip_denoised,
-    #         num_inference_steps=num_inference_steps,
-    #         guidance_scale=guidance_scale,
-    #         use_cfg=use_cfg,
-    #     ):
-    #         pass
-
-    #     return sample
-
-    # def sample_loop_progressive(
-    #     self,
-    #     model,
-    #     shape,
-    #     cond: torch.Tensor = None,
-    #     num_inference_steps: int = None,
-    #     guidance_scale: float = 1.0,
-    #     clip_denoised: bool = False,
-    #     use_cfg: bool = False,
-    # ):
-    #     """
-    #     Yields sample at each timestep during the sampling loop
-    #     """
-
-    #     B = shape[0]
-
-    #     # start with random gaussian noise
-    #     x_t = torch.randn(*shape, device=self.device)
-    #     timesteps = range(self.noise_scheduler.num_timesteps)[::-1]
-    #     cond = model.prepare_cond(cond)
-
-    #     # denoise progressively at each timestep
-    #     for t in tqdm(timesteps):
-    #         t = torch.full((B,), t, device=self.device)
-    #         x_t = self.step(
-    #             model,
-    #             x_t,
-    #             t,
-    #             cond=cond,
-    #             guidance_scale=guidance_scale,
-    #             clip_denoised=clip_denoised,
-    #             use_cfg=use_cfg,
-    #         )
-    #         yield x_t

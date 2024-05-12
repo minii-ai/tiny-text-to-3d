@@ -44,7 +44,6 @@ class PointCloudDiffusion(nn.Module):
 
         return loss
 
-    @torch.inference_mode()
     def sample_loop(
         self,
         batch_size: int = 1,
@@ -65,8 +64,26 @@ class PointCloudDiffusion(nn.Module):
             use_cfg=use_cfg,
         )
 
-    def sample_loop_progressive():
-        pass
+    def sample_loop_progressive(
+        self,
+        batch_size: int = 1,
+        cond=None,
+        clip_denoised: bool = False,
+        num_inference_steps: int = 1000,
+        guidance_scale: float = 1.0,
+        use_cfg: bool = False,
+    ):
+
+        shape = (batch_size, self.num_points, self.dim)
+        return self.sampler.sample_loop_progressive(
+            self.model,
+            shape=shape,
+            cond=cond,
+            clip_denoised=clip_denoised,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            use_cfg=use_cfg,
+        )
 
     def forward(
         self,
