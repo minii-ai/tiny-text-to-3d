@@ -1,22 +1,48 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from einops import reduce
 
 from .noise_schedule import NoiseScheduler
 from .sampler import Sampler
 
 
-class Diffusion(nn.Module):
+class PointCloudDiffusion(nn.Module):
     def __init__(
         self,
         noise_scheduler: NoiseScheduler,
         model,
         sampler: Sampler,
-        shape: tuple,
+        num_points: int,
+        dim: int,
     ):
         super().__init__()
+        self.noise_scheduler = noise_scheduler
+        self.model = model
+        self.sampler = sampler
+        self.num_points = num_points
+        self.dim = dim
 
-    def loss(self, x_start: torch.Tensor):
-        pass
+    def loss(self, x_start: torch.Tensor, cond=None):
+        T = self.noise_scheduler.num_timesteps
+        B = x_start.shape[0]
+
+        # add noise to x_start
+        t = torch.randint(0, T, (B,)).long().to("cuda")
+        noise = torch.randn_like(x_start)
+        x_t = self.noise_scheduler.add_noise(x_start, t, noise)
+
+        # predict noise
+        if cond is not None:
+            pred_noise = self.model(x_t, t, cond)
+        else:
+            pred_noise = self.model(x_t, t)
+
+        # loss over noise
+        mse_losses = F.mse_loss(pred_noise, noise, reduction="none")
+        loss = reduce(mse_losses, "b ... -> b", "mean").mean()
+
+        return loss
 
     def sample_loop():
         pass

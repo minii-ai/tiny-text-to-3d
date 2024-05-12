@@ -228,15 +228,6 @@ class Diffusion(nn.Module):
             )
             yield x_t
 
-    def p_sample_ddim(self):
-        pass
-
-    def p_sample_ddim_loop(self):
-        pass
-
-    def p_sample_ddim_loop_progressive(self):
-        pass
-
     def training_losses(
         self,
         model: nn.Module,
