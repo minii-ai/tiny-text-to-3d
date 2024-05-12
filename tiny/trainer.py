@@ -92,7 +92,7 @@ class PointCloudDiffusionTrainer:
                 ):
                     data = {
                         "epoch": epoch,
-                        "ddpm": self.ddpm,
+                        "diffusion": self.diffusion,
                         "save_dir": self.save_dir,
                     }
                     self.checkpoint_fn(data)

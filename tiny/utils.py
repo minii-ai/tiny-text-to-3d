@@ -20,7 +20,7 @@ def _fig_to_image(fig):
     return img
 
 
-def plot_point_cloud(point_cloud: torch.Tensor):
+def plot_point_cloud(point_cloud: torch.Tensor, title: str = None):
     """
     Params:
         - point_cloud: (N, D) a list of points in 2D or 3D space
@@ -45,7 +45,9 @@ def plot_point_cloud(point_cloud: torch.Tensor):
     return fig
 
 
-def plot_point_clouds(point_clouds: torch.Tensor, rows: int, cols: int):
+def plot_point_clouds(
+    point_clouds: torch.Tensor, rows: int, cols: int, titles: list[str] = None
+):
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
     axes = axes.ravel()
     dim = point_clouds.shape[2]
@@ -58,12 +60,16 @@ def plot_point_clouds(point_clouds: torch.Tensor, rows: int, cols: int):
                 X, Y = point_clouds[idx, :, 0], point_clouds[idx, :, 1]
                 ax.scatter(X, Y)
             elif dim == 3:
+                print("3d")
                 X, Y, Z = (
                     point_clouds[idx, :, 0],
                     point_clouds[idx, :, 1],
                     point_clouds[idx, :, 2],
                 )
                 ax.scatter(X, Y, Z)
+
+            if titles is not None:
+                ax.set_title(titles[idx])
 
             ax.axis("equal")  # Ensures that the scale of x and y axes are the same
         else:

@@ -1,5 +1,13 @@
 {
   "lr": 1e-3,
   "batch_size": 32,
-  "num_epochs": 1
+  "num_epochs": 1,
+
+  "eval": {
+    "checkpoint_every": 1,
+    "prompts": ["a table", "3d render of a table"],
+    "num_inference_steps": 100,
+    "guidance_scale": 1.0,
+    "num_samples": 5
+  }
 }

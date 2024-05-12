@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 
 import torch
@@ -8,6 +9,7 @@ from torch.utils.data import DataLoader
 sys.path.append("../")
 from datasets import ModelNetDataset, collate_fn_dict
 from tiny import PointCloudDiffusion, PointCloudDiffusionTrainer
+from tiny.utils import plot_point_clouds
 
 
 def parse_args():
@@ -28,6 +30,7 @@ def parse_args():
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
+    parser.add_argument("--checkpoint_every", type=int, default=5)
 
     return parser.parse_args()
 
@@ -69,12 +72,53 @@ def main(args):
     def get_batch_fn(batch):
         return {"data": batch["low_res"], "cond": batch["prompt"]}
 
+    def checkpoint_fn(data):
+        epoch = data["epoch"]
+        save_dir = args.save_dir
+
+        # create checkpoint dir
+        checkpoint_dir = os.path.join(save_dir, f"checkpoint_{epoch}")
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        # generate point clouds for each prompt
+        diffusion = data["diffusion"]
+        eval_config = train_config["eval"]
+        prompts = eval_config["prompts"]
+        guidance_scale = eval_config["guidance_scale"]
+        num_inference_steps = eval_config["num_inference_steps"]
+        num_samples = eval_config["num_samples"]
+
+        point_cloud_samples = []
+        titles = []
+
+        for prompt in prompts:
+            cond = [prompt] * num_samples
+            point_clouds = diffusion.sample_loop(
+                batch_size=num_samples,
+                cond=cond,
+                guidance_scale=guidance_scale,
+                num_inference_steps=num_inference_steps,
+                use_cfg=True,
+            )
+
+            titles += cond
+            point_cloud_samples.append(point_clouds.cpu())
+
+        point_cloud_samples = torch.cat(point_cloud_samples, dim=0)
+        image = plot_point_clouds(
+            point_cloud_samples, len(prompts), num_samples, titles
+        )
+
+        image.save(os.path.join(checkpoint_dir, "samples.png"))
+
     trainer = PointCloudDiffusionTrainer(
         diffusion=diffusion,
         train_loader=dataloader,
         lr=train_config["lr"],
         num_epochs=train_config["num_epochs"],
+        checkpoint_every=train_config["eval"]["checkpoint_every"],
         get_batch_fn=get_batch_fn,
+        checkpoint_fn=checkpoint_fn,
         save_dir=args.save_dir,
         device=args.device,
     )
