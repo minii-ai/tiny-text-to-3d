@@ -5,7 +5,6 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-# from .ddpm import PointCloudDDPM
 from .utils import count_parameters
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -20,7 +19,6 @@ class PointCloudDiffusionTrainer:
         self,
         ddpm,
         train_loader: DataLoader,
-        get_batch_fn,
         lr: float = 3e-4,
         num_epochs: int = 10,
         resume_checkpoint: bool = False,
@@ -40,7 +38,6 @@ class PointCloudDiffusionTrainer:
         self.checkpoint_fn = checkpoint_fn
         self.checkpoint_every = checkpoint_every
         self.checkpoint_train_end = checkpoint_train_end
-        self.a = a
 
         self.optimizer = torch.optim.Adam(ddpm.parameters(), lr=lr)
 

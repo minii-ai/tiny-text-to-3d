@@ -5,6 +5,7 @@ from einops import reduce
 
 from .noise_schedule import NoiseScheduler
 from .sampler.base import Sampler
+from .tensor_utils import extract
 
 
 class PointCloudDiffusion(nn.Module):
@@ -15,6 +16,8 @@ class PointCloudDiffusion(nn.Module):
         sampler: Sampler,
         num_points: int,
         dim: int,
+        min_snr_loss_weight: bool = False,
+        min_snr_gamma: float = 5.0,
     ):
         super().__init__()
         self.noise_scheduler = noise_scheduler
@@ -23,7 +26,23 @@ class PointCloudDiffusion(nn.Module):
         self.num_points = num_points
         self.dim = dim
 
+        # https://arxiv.org/pdf/2303.09556
+        if min_snr_loss_weight:
+            snr = self.noise_scheduler.alphas_cumprod / (
+                1 - self.noise_scheduler.alphas_cumprod
+            )
+            min_snr = torch.clamp(snr, max=min_snr_gamma)
+            loss_weights = min_snr / snr
+        else:
+            loss_weights = torch.ones_like(self.noise_scheduler.betas)
+
+        self.register_buffer("loss_weights", loss_weights)
+
     def loss(self, x_start: torch.Tensor, cond=None):
+        """
+        Loss between predicted noise and true noise.
+        """
+
         T = self.noise_scheduler.num_timesteps
         B = x_start.shape[0]
 
@@ -40,7 +59,9 @@ class PointCloudDiffusion(nn.Module):
 
         # loss over noise
         mse_losses = F.mse_loss(pred_noise, noise, reduction="none")
-        loss = reduce(mse_losses, "b ... -> b", "mean").mean()
+        batch_losses = reduce(mse_losses, "b ... -> b", "mean")
+        loss_weights = extract(self.loss_weights, t, (B,))
+        loss = (loss_weights * batch_losses).mean()
 
         return loss
 
