@@ -1,2 +1,2 @@
-from .diffusion import Diffusion
+from .diffusion import PointCloudDiffusion
 from .trainer import PointCloudDiffusionTrainer

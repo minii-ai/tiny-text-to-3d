@@ -1,2 +1,2 @@
-from .modelnet import ModelNetPointCloudDataset
+from .modelnet import ModelNetDataset
 from .sine_cosine import CosineDataset, SineCosineDataset, SineDataset

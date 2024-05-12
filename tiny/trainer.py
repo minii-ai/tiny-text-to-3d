@@ -20,7 +20,7 @@ class PointCloudDiffusionTrainer:
         self,
         ddpm,
         train_loader: DataLoader,
-        model_type: Literal["uncond"] = "uncond",
+        get_batch_fn,
         lr: float = 3e-4,
         num_epochs: int = 10,
         resume_checkpoint: bool = False,
@@ -29,11 +29,9 @@ class PointCloudDiffusionTrainer:
         checkpoint_fn=None,
         checkpoint_every: int = 1,
         checkpoint_train_end=None,
-        a=False,
     ):
         self.ddpm = ddpm
         self.train_loader = train_loader
-        self.model_type = model_type
         self.lr = lr
         self.num_epochs = num_epochs
         self.resume_checkpoint = resume_checkpoint

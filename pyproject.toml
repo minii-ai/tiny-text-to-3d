@@ -17,8 +17,7 @@ einops = "^0.8.0"
 opencv-python = "^4.9.0.80"
 imageio = "^2.34.1"
 open-clip-torch = "^2.24.0"
-open3d = "^0.18.0"
-tensorboard = "^2.16.2"
+addict = "^2.4.0"
 
 
 [build-system]

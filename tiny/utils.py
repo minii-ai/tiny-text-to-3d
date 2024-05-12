@@ -27,7 +27,9 @@ def plot_point_cloud(point_cloud: torch.Tensor):
     """
     fig = plt.figure()
     dim = point_cloud.shape[1]
-    point_cloud = point_cloud.cpu()
+
+    if isinstance(point_cloud, torch.Tensor):
+        point_cloud = point_cloud.cpu()
 
     assert dim in {2, 3}
 
@@ -40,7 +42,7 @@ def plot_point_cloud(point_cloud: torch.Tensor):
         X, Y, Z = point_cloud[:, 0], point_cloud[:, 1], point_cloud[:, 2]
         ax.scatter(X, Y, Z)
 
-    return _fig_to_image(fig)
+    return fig
 
 
 def plot_point_clouds(point_clouds: torch.Tensor, rows: int, cols: int):
