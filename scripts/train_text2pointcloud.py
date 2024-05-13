@@ -120,8 +120,10 @@ def main(args):
     trainer = PointCloudDiffusionTrainer(
         diffusion=diffusion,
         train_loader=dataloader,
+        init_lr=train_config["init_lr"],
         lr=train_config["lr"],
         num_epochs=train_config["num_epochs"],
+        warmup_steps=train_config["warmup_steps"],
         checkpoint_every=train_config["eval"]["checkpoint_every"],
         get_batch_fn=get_batch_fn,
         checkpoint_fn=checkpoint_fn,
