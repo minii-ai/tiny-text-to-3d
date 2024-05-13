@@ -191,7 +191,10 @@ class ModelNetDataset(Dataset):
                 trimesh.sample.sample_surface(mesh, self.num_high_res_points)[0].data
             )
 
-            item["low_res"] = low_res_samples
-            item["high_res"] = high_res_samples
+            low_res = torch.from_numpy(low_res_samples).to(torch.float32)
+            high_res = torch.from_numpy(high_res_samples).to(torch.float32)
+
+            item["low_res"] = low_res
+            item["high_res"] = high_res
 
         return item

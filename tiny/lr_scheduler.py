@@ -1,4 +1,3 @@
-import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR, LRScheduler
 
 
@@ -31,9 +30,10 @@ class CosineAnnealingWithWarmupLR(LRScheduler):
                 self.cosine_annealing.optimizer.param_groups, values
             ):
                 param_group["lr"] = lr
-            self._step_count += 1
         else:
             self.cosine_annealing.step(*args)
+
+        self._step_count += 1
 
     def get_lr(self):
         if self._step_count < self.warmup_steps:

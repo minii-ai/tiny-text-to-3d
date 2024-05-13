@@ -3,7 +3,6 @@ import json
 import os
 import sys
 
-import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
@@ -39,9 +38,6 @@ def parse_args():
 def read_json(path: str):
     with open(path, "r") as f:
         return json.load(f)
-
-
-from torch.utils.data import Subset
 
 
 def main(args):
