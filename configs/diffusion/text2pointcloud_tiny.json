@@ -1,7 +1,7 @@
 {
   "noise_scheduler": {
     "num_timesteps": 1000,
-    "schedule_type": "cosine"
+    "schedule_type": "linear"
   },
   "model": {
     "type": "CLIPConditionalPointCloudDiT",
@@ -13,8 +13,8 @@
     "mlp_ratio": 4
   },
   "sampler": {
-    "type": "DDIMSampler",
-    "eta": 0
+    "type": "DDPMSampler"
   },
-  "min_snr_loss_weight": false
+  "min_snr_loss_weight": true,
+  "min_snr_gamma": 5.0
 }

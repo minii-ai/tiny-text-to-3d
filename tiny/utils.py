@@ -42,14 +42,34 @@ def plot_point_cloud(point_cloud: torch.Tensor, title: str = None):
         X, Y, Z = point_cloud[:, 0], point_cloud[:, 1], point_cloud[:, 2]
         ax.scatter(X, Y, Z)
 
-    return fig
+    return _fig_to_image(fig)
 
 
 def plot_point_clouds(
-    point_clouds: torch.Tensor, rows: int, cols: int, titles: list[str] = None
+    point_clouds: torch.Tensor, rows: int, cols: int, titles: list[str] = None, **kwargs
 ):
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
-    axes = axes.ravel()
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(cols * 4, rows * 4),
+    )
+
+    # add axes to a list if there's only one row or column
+    if rows == 1 and cols == 1:
+        axes = [axes]
+    else:
+        axes = axes.ravel()
+
+    axes = [
+        fig.add_subplot(
+            rows,
+            cols,
+            i + 1,
+            projection="3d" if point_clouds.shape[2] == 3 else "rectilinear",
+        )
+        for i in range(rows * cols)
+    ]
+
     dim = point_clouds.shape[2]
     point_clouds = point_clouds.cpu()
 
@@ -58,15 +78,14 @@ def plot_point_clouds(
 
             if dim == 2:
                 X, Y = point_clouds[idx, :, 0], point_clouds[idx, :, 1]
-                ax.scatter(X, Y)
+                ax.scatter(X, Y, **kwargs)
             elif dim == 3:
-                print("3d")
                 X, Y, Z = (
                     point_clouds[idx, :, 0],
                     point_clouds[idx, :, 1],
                     point_clouds[idx, :, 2],
                 )
-                ax.scatter(X, Y, Z)
+                ax.scatter(X, Y, Z, **kwargs)
 
             if titles is not None:
                 ax.set_title(titles[idx])
@@ -90,6 +109,10 @@ def to_pil_image(x: torch.Tensor):
     # normalize between 0 and 1
     x = ((x + 1) / 2).clamp(0, 1)
     return v2.ToPILImage()(x)
+
+
+def to_tensor(image: Image.Image):
+    return v2.ToTensor()(image)
 
 
 def plot_images(images: list[Image.Image], **kwargs):

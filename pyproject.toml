@@ -18,6 +18,7 @@ opencv-python = "^4.9.0.80"
 imageio = "^2.34.1"
 open-clip-torch = "^2.24.0"
 addict = "^2.4.0"
+tensorboard = "^2.16.2"
 
 
 [build-system]

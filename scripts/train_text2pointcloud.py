@@ -3,13 +3,14 @@ import json
 import os
 import sys
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
 sys.path.append("../")
 from datasets import ModelNetDataset, collate_fn_dict
 from tiny import PointCloudDiffusion, PointCloudDiffusionTrainer
-from tiny.utils import plot_point_clouds
+from tiny.utils import plot_point_clouds, to_tensor
 
 
 def parse_args():
@@ -38,6 +39,9 @@ def parse_args():
 def read_json(path: str):
     with open(path, "r") as f:
         return json.load(f)
+
+
+from torch.utils.data import Subset
 
 
 def main(args):
@@ -74,10 +78,12 @@ def main(args):
 
     def checkpoint_fn(data):
         epoch = data["epoch"]
+        writer = data["writer"]
+        global_step = data["global_step"]
         save_dir = args.save_dir
 
         # create checkpoint dir
-        checkpoint_dir = os.path.join(save_dir, f"checkpoint_{epoch}")
+        checkpoint_dir = os.path.join(save_dir, f"checkpoints")
         os.makedirs(checkpoint_dir, exist_ok=True)
 
         # generate point clouds for each prompt
@@ -107,9 +113,13 @@ def main(args):
         point_cloud_samples = torch.cat(point_cloud_samples, dim=0)
         image = plot_point_clouds(
             point_cloud_samples, len(prompts), num_samples, titles
-        )
+        ).convert("RGB")
 
-        image.save(os.path.join(checkpoint_dir, "samples.png"))
+        image = to_tensor(image)
+
+        writer.add_image("samples", image, global_step)
+        weights_path = os.path.join(checkpoint_dir, f"weights_{epoch}.pt")
+        torch.save(diffusion.state_dict(), weights_path)
 
     trainer = PointCloudDiffusionTrainer(
         diffusion=diffusion,

@@ -66,11 +66,11 @@ class PointCloudDiffusion(nn.Module):
         B = x_start.shape[0]
 
         # add noise to x_start
-        t = torch.randint(0, T, (B,)).long().to(self.device)
         noise = torch.randn_like(x_start)
+        t = torch.randint(0, T, (B,)).long().to(self.device)
         x_t = self.noise_scheduler.add_noise(x_start, t, noise)
 
-        cond = self.model.prepare_cond(cond).to(self.device)
+        cond = self.model.prepare_cond(cond)
 
         # predict noise
         if cond is not None:
