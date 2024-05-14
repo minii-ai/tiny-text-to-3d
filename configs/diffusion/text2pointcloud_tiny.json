@@ -13,7 +13,8 @@
     "mlp_ratio": 4
   },
   "sampler": {
-    "type": "DDPMSampler"
+    "type": "DDIMSampler",
+    "eta": 0
   },
   "min_snr_loss_weight": true,
   "min_snr_gamma": 5.0

@@ -1,18 +1,11 @@
 {
   "lr": 1e-3,
   "batch_size": 32,
-  "num_epochs": 100,
-  "init_lr": 1e-5,
-  "warmup_steps": 100,
-  "eval": {
-    "checkpoint_every": 5,
-    "prompts": [
-      "a table",
-      "a chair",
-      "object where i poop",
-      "3d render of a desk",
-      "place to bathe"
-    ],
+  "train_steps": 100,
+  "warmup_steps": 50,
+  "checkpoint_every": 5,
+  "validation": {
+    "prompts": ["object where i poop"],
     "num_inference_steps": 100,
     "guidance_scale": 1.0,
     "num_samples": 5

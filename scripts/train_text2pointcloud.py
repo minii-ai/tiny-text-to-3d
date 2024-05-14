@@ -31,6 +31,7 @@ def parse_args():
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     parser.add_argument("--checkpoint_every", type=int, default=5)
+    parser.add_argument("--resume_checkpoint", action="store_true")
 
     return parser.parse_args()
 
@@ -73,22 +74,16 @@ def main(args):
         return {"data": batch["low_res"], "cond": batch["prompt"]}
 
     def checkpoint_fn(data):
-        epoch = data["epoch"]
         writer = data["writer"]
-        global_step = data["global_step"]
-        save_dir = args.save_dir
-
-        # create checkpoint dir
-        checkpoint_dir = os.path.join(save_dir, f"checkpoints")
-        os.makedirs(checkpoint_dir, exist_ok=True)
+        global_step = data["step"]
 
         # generate point clouds for each prompt
         diffusion = data["diffusion"]
-        eval_config = train_config["eval"]
-        prompts = eval_config["prompts"]
-        guidance_scale = eval_config["guidance_scale"]
-        num_inference_steps = eval_config["num_inference_steps"]
-        num_samples = eval_config["num_samples"]
+        validation = train_config["validation"]
+        prompts = validation["prompts"]
+        guidance_scale = validation["guidance_scale"]
+        num_inference_steps = validation["num_inference_steps"]
+        num_samples = validation["num_samples"]
 
         point_cloud_samples = []
         titles = []
@@ -106,28 +101,26 @@ def main(args):
             titles += cond
             point_cloud_samples.append(point_clouds.cpu())
 
+        # convert point cloud to 3d plots and save in tensorboard
         point_cloud_samples = torch.cat(point_cloud_samples, dim=0)
         image = plot_point_clouds(
             point_cloud_samples, len(prompts), num_samples, titles
         ).convert("RGB")
-
         image = to_tensor(image)
 
-        writer.add_image("samples", image, global_step)
-        weights_path = os.path.join(checkpoint_dir, f"weights_{epoch}.pt")
-        torch.save(diffusion.state_dict(), weights_path)
+        writer.add_image("validation/samples", image, global_step)
 
     trainer = PointCloudDiffusionTrainer(
         diffusion=diffusion,
         train_loader=dataloader,
-        init_lr=train_config["init_lr"],
         lr=train_config["lr"],
-        num_epochs=train_config["num_epochs"],
+        train_steps=train_config["train_steps"],
         warmup_steps=train_config["warmup_steps"],
-        checkpoint_every=train_config["eval"]["checkpoint_every"],
+        checkpoint_every=train_config["checkpoint_every"],
         get_batch_fn=get_batch_fn,
         checkpoint_fn=checkpoint_fn,
         save_dir=args.save_dir,
+        resume_checkpoint=args.resume_checkpoint,
         device=args.device,
     )
 

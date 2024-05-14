@@ -1,6 +1,3 @@
-import math
-
-import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR, _LRScheduler
 
 
@@ -8,7 +5,6 @@ class CosineAnnealingWithWarmupLR(_LRScheduler):
     def __init__(
         self,
         optimizer,
-        init_lr: float,
         warmup_steps: int,
         T_max: int,
         eta_min: float,
@@ -18,7 +14,6 @@ class CosineAnnealingWithWarmupLR(_LRScheduler):
             lr = param_group["lr"]
 
         self._lr = lr
-        self.init_lr = init_lr
         self.warmup_steps = warmup_steps
         self.cosine_annealing = CosineAnnealingLR(
             optimizer, T_max - warmup_steps, eta_min, last_epoch
@@ -40,11 +35,7 @@ class CosineAnnealingWithWarmupLR(_LRScheduler):
 
     def get_lr(self):
         if self._step_count <= self.warmup_steps:
-            lr = [
-                ((self._lr - self.init_lr) / (self.warmup_steps - 1))
-                * (self._step_count - 1)
-                + self.init_lr
-            ]
+            lr = [((self._lr) / (self.warmup_steps - 1)) * (self._step_count - 1)]
 
             return lr
         else:

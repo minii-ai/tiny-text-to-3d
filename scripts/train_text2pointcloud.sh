@@ -5,4 +5,5 @@ python3 train_text2pointcloud.py \
     --subset=all \
     --diffusion_config=../configs/diffusion/text2pointcloud_tiny.json \
     --train_config=../configs/train/text2pointcloud_tiny.json \
-    --save_dir=../checkpoints/text2pointcloud_tiny_modelnet10 \
+    --save_dir=../checkpoints/text2pointcloud_tiny_modelnet10_test \
+    --resume_checkpoint
