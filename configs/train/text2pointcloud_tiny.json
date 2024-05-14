@@ -1,11 +1,21 @@
 {
   "lr": 1e-3,
   "batch_size": 32,
-  "train_steps": 100,
-  "warmup_steps": 50,
-  "checkpoint_every": 5,
+  "train_steps": 100000,
+  "warmup_steps": 500,
+  "checkpoint_every": 2500,
   "validation": {
-    "prompts": ["object where i poop"],
+    "prompts": [
+      "object where i poop",
+      "keeps your hands clean",
+      "you put your head here when you sleep",
+      "computer keyboard",
+      "a musical instrument",
+      "stairs",
+      "object to hold flowers",
+      "vehicle that flies",
+      "need CO2 to live"
+    ],
     "num_inference_steps": 100,
     "guidance_scale": 1.0,
     "num_samples": 5

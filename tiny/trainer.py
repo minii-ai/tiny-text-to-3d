@@ -139,55 +139,66 @@ class PointCloudDiffusionTrainer:
         if self.save_dir is not None:
             os.makedirs(self.save_dir, exist_ok=True)
 
+        num_epochs = self.train_steps // len(self.train_loader) + 1
+
         with tqdm(total=self.train_steps) as pbar:
-            for batch in self.train_loader:
-                # start training at start step
-                if self.global_step < self.start_step:
-                    self.global_step += 1
+            for epoch in range(num_epochs):
+                for batch in self.train_loader:
+                    # start training at start step
+                    if self.global_step < self.start_step:
+                        self.global_step += 1
+                        pbar.update(1)
+                        continue
+
+                    loss = self.train_step(batch)
+                    losses.append(loss.item())
+
+                    pbar.set_postfix(loss=loss.item(), lr=self.lr_scheduler.get_lr()[0])
                     pbar.update(1)
-                    continue
 
-                loss = self.train_step(batch)
-                losses.append(loss.item())
-
-                pbar.set_postfix(loss=loss.item(), lr=self.lr_scheduler.get_lr()[0])
-                pbar.update(1)
-
-                self.writer.add_scalar("train/loss", loss.item(), self.global_step)
-                self.writer.add_scalar(
-                    "train/lr", self.lr_scheduler.get_lr()[0], self.global_step
-                )
-
-                if self.global_step % self.checkpoint_every == 0:
-                    checkpoint_dir = os.path.join(
-                        self.save_dir, f"checkpoint-{self.global_step}"
+                    self.writer.add_scalar("train/loss", loss.item(), self.global_step)
+                    self.writer.add_scalar(
+                        "train/lr", self.lr_scheduler.get_lr()[0], self.global_step
                     )
-                    checkpoint_save_path = os.path.join(checkpoint_dir, "checkpoint.pt")
 
-                    # save checkpoint
-                    os.makedirs(checkpoint_dir, exist_ok=True)
-                    checkpoint_data = {
-                        "weights": self.diffusion.state_dict(),
-                        "optimizer": self.optimizer.state_dict(),
-                        "lr_scheduler": self.lr_scheduler.state_dict(),
-                    }
-                    torch.save(checkpoint_data, checkpoint_save_path)
+                    if self.global_step % self.checkpoint_every == 0:
+                        checkpoint_dir = os.path.join(
+                            self.save_dir, f"checkpoint-{self.global_step}"
+                        )
+                        checkpoint_save_path = os.path.join(
+                            checkpoint_dir, "checkpoint.pt"
+                        )
 
-                    # call custom checkpoint function
-                    if self.checkpoint_fn is not None:
-                        data = {
-                            "diffusion": self.diffusion,
-                            "save_dir": self.save_dir,
-                            "writer": self.writer,
-                            "step": self.global_step,
-                            "optimizer": self.optimizer,
-                            "lr_scheduler": self.lr_scheduler,
+                        # save checkpoint
+                        os.makedirs(checkpoint_dir, exist_ok=True)
+                        checkpoint_data = {
+                            "weights": self.diffusion.state_dict(),
+                            "optimizer": self.optimizer.state_dict(),
+                            "lr_scheduler": self.lr_scheduler.state_dict(),
                         }
+                        torch.save(checkpoint_data, checkpoint_save_path)
 
-                        self.checkpoint_fn(data)
+                        # call custom checkpoint function
+                        if self.checkpoint_fn is not None:
+                            data = {
+                                "diffusion": self.diffusion,
+                                "save_dir": self.save_dir,
+                                "writer": self.writer,
+                                "step": self.global_step,
+                                "optimizer": self.optimizer,
+                                "lr_scheduler": self.lr_scheduler,
+                            }
 
-                self.global_step += 1
-                self.writer.flush()
+                            self.checkpoint_fn(data)
+
+                    self.global_step += 1
+                    self.writer.flush()
+
+                    if self.global_step > self.train_steps:
+                        break
+
+                if self.global_step > self.train_steps:
+                    break
 
         if self.save_dir:
             weights_save_path = os.path.join(self.save_dir, "weights.pt")
