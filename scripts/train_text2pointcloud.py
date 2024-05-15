@@ -46,6 +46,10 @@ def main(args):
 
     train_config = read_json(args.train_config)
     batch_size = train_config["batch_size"]
+    diffusion_config = read_json(args.diffusion_config)
+
+    print(train_config)
+    print(diffusion_config)
 
     # prepare dataset and dataloader
     if args.subset == "all":
@@ -54,8 +58,13 @@ def main(args):
         subset = args.subset.split(",")
 
     dataset = ModelNetDataset.load_all(
-        args.dataset_dir, augment_prob=args.augment_prob, subset=subset
+        args.dataset_dir,
+        subset=subset,
+        precompute_clip_embeddings=True,
+        clip_model=diffusion_config["model"]["clip_model"],
     )
+
+    torch.cuda.empty_cache()
 
     dataloader = DataLoader(
         dataset,
@@ -66,12 +75,11 @@ def main(args):
     )
 
     # prepare diffusion model
-    diffusion_config = read_json(args.diffusion_config)
     diffusion = PointCloudDiffusion.from_config(diffusion_config)
 
     # create trainer
     def get_batch_fn(batch):
-        return {"data": batch["low_res"], "cond": batch["prompt"]}
+        return {"data": batch["low_res"], "cond": batch["prompt_embeds"]}
 
     def checkpoint_fn(data):
         writer = data["writer"]

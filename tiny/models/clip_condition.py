@@ -35,10 +35,12 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
             learn_sigma=learn_sigma,
         )
 
-        self.clip = clip
+        self.frozen = {
+            "clip": clip,
+        }
 
         # freeze clip
-        for param in self.clip.parameters():
+        for param in clip.parameters():
             param.requires_grad = False
 
         self.tokenizer = tokenizer
@@ -49,17 +51,21 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
         return device
 
     def encode_text(self, text: list[str]):
-        self.clip.eval()
+        self.frozen["clip"].eval()
+        self.frozen["clip"].to(self.device)
         text = self.tokenizer(text).to(self.device)
 
         with torch.no_grad():
-            text_features = self.clip.encode_text(text)
+            text_features = self.frozen["clip"].encode_text(text)
 
         return text_features
 
     def prepare_cond(self, cond: list[str] = None):
         if cond is not None:
-            return self.encode_text(cond)
+            if type(cond[0]) == str:
+                return self.encode_text(cond)
+            else:
+                return cond
         else:
             return None
 

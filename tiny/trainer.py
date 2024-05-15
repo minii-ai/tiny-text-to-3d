@@ -29,6 +29,7 @@ class PointCloudDiffusionTrainer:
         diffusion: PointCloudDiffusion,
         train_loader: DataLoader,
         lr: float = 3e-4,
+        min_lr: float = 1e-4,
         train_steps: int = 10000,
         warmup_steps: int = 100,
         resume_checkpoint: bool = False,
@@ -59,7 +60,7 @@ class PointCloudDiffusionTrainer:
             optimizer=self.optimizer,
             warmup_steps=warmup_steps,
             T_max=train_steps,
-            eta_min=1e-4,
+            eta_min=min_lr,
         )
 
         logs_dir = os.path.join(save_dir, "logs") if save_dir is not None else None

@@ -2,18 +2,21 @@
   "lr": 1e-3,
   "min_lr": 1e-4,
   "batch_size": 32,
-  "train_steps": 20000,
+  "train_steps": 100000,
   "warmup_steps": 1000,
   "checkpoint_every": 1000,
   "validation": {
     "prompts": [
+      "an airplane",
+      "a computer monitor",
+      "a bottle of water",
+      "a musical instrument",
+      "a bed",
+      "a toliet",
       "object where i poop",
-      "chair with legs",
-      "a reclining armchair",
-      "a place to sleep",
-      "a desk",
-      "a table",
-      "a computer monitor"
+      "living organism",
+      "a lamp",
+      "a table"
     ],
     "num_inference_steps": 1000,
     "guidance_scale": 1.0,

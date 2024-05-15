@@ -1,14 +1,10 @@
 import os
 
 import numpy as np
+import open_clip
 import torch
-import trimesh
 from torch.utils.data import ConcatDataset, Dataset
-
-PROMPT_TEMPLATES = [
-    "3d render of {label}",
-    "a {label}",
-]
+from tqdm import tqdm
 
 
 def collate_fn_dict(batch):
@@ -77,23 +73,23 @@ class ModelNetDataset(Dataset):
     @staticmethod
     def load_all(
         root: str,
-        prompt_templates=PROMPT_TEMPLATES,
-        augment_prob: float = 0.0,
         subset: list[str] = "all",
+        precompute_clip_embeddings: bool = False,
+        clip_model: str = "ViT-B-32",
     ):
         train_dataset = ModelNetDataset(
             root,
             train=True,
-            prompt_templates=prompt_templates,
-            augment_prob=augment_prob,
             subset=subset,
+            precompute_clip_embeddings=precompute_clip_embeddings,
+            clip_model=clip_model,
         )
         test_dataset = ModelNetDataset(
             root,
             train=False,
-            prompt_templates=prompt_templates,
-            augment_prob=augment_prob,
             subset=subset,
+            precompute_clip_embeddings=precompute_clip_embeddings,
+            clip_model=clip_model,
         )
 
         dataset = ConcatDataset([train_dataset, test_dataset])
@@ -104,20 +100,26 @@ class ModelNetDataset(Dataset):
         root: str,
         train: bool = True,
         subset: list[str] = "all",
-        prompt_templates=PROMPT_TEMPLATES,
-        augment_prob: float = 0.0,
+        precompute_clip_embeddings: bool = False,
+        clip_model: str = "ViT-B-32",
     ):
         super().__init__()
         self.root = root
         self.train = train
         self.subset = subset
-        self.prompt_templates = prompt_templates
-        self.augment_prob = augment_prob
 
         split = "train" if train else "test"
         off_dir = os.path.join(root, "off")
         low_res_dir = os.path.join(root, "low_res")
         high_res_dir = os.path.join(root, "high_res")
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        if precompute_clip_embeddings:
+            clip = open_clip.create_model(
+                clip_model, pretrained="laion2b_s34b_b79k"
+            ).to(device)
+            tokenizer = open_clip.get_tokenizer(clip_model)
 
         labels = sorted(
             [
@@ -131,6 +133,7 @@ class ModelNetDataset(Dataset):
 
         items = []
 
+        pbar = tqdm()
         for i, label in enumerate(labels):
             if not (label in subset or subset == "all"):
                 continue
@@ -160,11 +163,28 @@ class ModelNetDataset(Dataset):
                     "high_res": high_res,
                 }
 
+                if precompute_clip_embeddings:
+                    text = tokenizer(label).to(device)
+
+                    with torch.no_grad():
+                        prompt_embeds = clip.encode_text(text).cpu()
+                        item["prompt_embeds"] = prompt_embeds.squeeze(0)
+
                 items.append(item)
+                pbar.update(1)
 
         self.items = items
         self.num_low_res_points = self.items[0]["low_res"].shape[0]
         self.num_high_res_points = self.items[0]["high_res"].shape[0]
+
+        # get rid of clip and tokenizer after
+        if precompute_clip_embeddings:
+            clip.to("cpu")
+
+            torch.cuda.empty_cache()
+
+            del clip
+            del tokenizer
 
     def __len__(self):
         return len(self.items)
@@ -172,14 +192,5 @@ class ModelNetDataset(Dataset):
     def __getitem__(self, idx: int):
         item = self.items[idx]
         item = {**item}
-
-        prob = torch.rand(1).item()
-
-        if prob <= self.augment_prob:
-            # randomly get prompt from prompt_templates
-            prompt = np.random.choice(self.prompt_templates).format(
-                label=item["prompt"]
-            )
-            item["prompt"] = prompt
 
         return item
