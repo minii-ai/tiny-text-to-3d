@@ -59,7 +59,7 @@ class PointCloudDiffusionTrainer:
             optimizer=self.optimizer,
             warmup_steps=warmup_steps,
             T_max=train_steps,
-            eta_min=1e-6,
+            eta_min=1e-4,
         )
 
         logs_dir = os.path.join(save_dir, "logs") if save_dir is not None else None
@@ -98,8 +98,6 @@ class PointCloudDiffusionTrainer:
             self.diffusion.load_state_dict(weights)
             self.optimizer.load_state_dict(optimizer)
             self.lr_scheduler.load_state_dict(lr_scheduler)
-
-            # raise RuntimeError
 
     def train_step(self, batch: dict):
         self.diffusion.train()

@@ -96,6 +96,7 @@ def main(args):
                 guidance_scale=guidance_scale,
                 num_inference_steps=num_inference_steps,
                 use_cfg=True,
+                clip_denoised=True,
             )
 
             titles += cond

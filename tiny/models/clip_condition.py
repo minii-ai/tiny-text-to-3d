@@ -36,6 +36,11 @@ class CLIPConditionalPointCloudDiT(PointCloudDiT):
         )
 
         self.clip = clip
+
+        # freeze clip
+        for param in self.clip.parameters():
+            param.requires_grad = False
+
         self.tokenizer = tokenizer
 
     @property

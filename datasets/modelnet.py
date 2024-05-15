@@ -182,19 +182,4 @@ class ModelNetDataset(Dataset):
             )
             item["prompt"] = prompt
 
-            # randomly resample low res and high res point cloud
-            mesh = trimesh.load_mesh(item["mesh"])
-            low_res_samples = np.array(
-                trimesh.sample.sample_surface(mesh, self.num_low_res_points)[0].data
-            )
-            high_res_samples = np.array(
-                trimesh.sample.sample_surface(mesh, self.num_high_res_points)[0].data
-            )
-
-            low_res = torch.from_numpy(low_res_samples).to(torch.float32)
-            high_res = torch.from_numpy(high_res_samples).to(torch.float32)
-
-            item["low_res"] = low_res
-            item["high_res"] = high_res
-
         return item
