@@ -57,10 +57,16 @@ def main(args):
     else:
         subset = args.subset.split(",")
 
+    # dataset = ModelNetDataset.load_all(
+    #     args.dataset_dir,
+    #     subset=subset,
+    #     precompute_clip_embeddings=True,
+    #     clip_model=diffusion_config["model"]["clip_model"],
+    # )
     dataset = ModelNetDataset.load_all(
         args.dataset_dir,
         subset=subset,
-        precompute_clip_embeddings=True,
+        precompute_clip_embeddings=False,
         clip_model=diffusion_config["model"]["clip_model"],
     )
 
@@ -71,6 +77,8 @@ def main(args):
         batch_size=batch_size,
         shuffle=True,
         num_workers=args.num_workers,
+        pin_memory=True,
+        pin_memory_device=args.device,
         collate_fn=collate_fn_dict,
     )
 
@@ -79,7 +87,8 @@ def main(args):
 
     # create trainer
     def get_batch_fn(batch):
-        return {"data": batch["low_res"], "cond": batch["prompt_embeds"]}
+        # return {"data": batch["low_res"], "cond": batch["prompt_embeds"]}
+        return {"data": batch["low_res"], "cond": batch["prompt"]}
 
     def checkpoint_fn(data):
         writer = data["writer"]
@@ -104,7 +113,6 @@ def main(args):
                 guidance_scale=guidance_scale,
                 num_inference_steps=num_inference_steps,
                 use_cfg=True,
-                clip_denoised=True,
             )
 
             titles += cond

@@ -1,19 +1,22 @@
 {
   "lr": 1e-3,
-  "min_lr": 1e-4,
-  "batch_size": 32,
-  "train_steps": 20000,
+  "min_lr": 1e-3,
+  "batch_size": 128,
+  "train_steps": 100000,
   "warmup_steps": 1000,
   "checkpoint_every": 1000,
   "validation": {
     "prompts": [
-      "object where i poop",
-      "chair with legs",
-      "a reclining armchair",
-      "a place to sleep",
+      "a bathtub",
+      "a bed",
+      "a chair",
       "a desk",
+      "a dresser",
+      "a monitor",
+      "a night stand",
+      "a sofa",
       "a table",
-      "a computer monitor"
+      "a toliet"
     ],
     "num_inference_steps": 1000,
     "guidance_scale": 1.0,

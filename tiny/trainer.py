@@ -96,7 +96,8 @@ class PointCloudDiffusionTrainer:
             logging.info(
                 f"Loading state dict for diffusion, optimizer, and lr_scheduler from checkpoint {checkpoint_iters[-1]}"
             )
-            self.diffusion.load_state_dict(weights)
+
+            self.diffusion.model.load_state_dict(weights)
             self.optimizer.load_state_dict(optimizer)
             self.lr_scheduler.load_state_dict(lr_scheduler)
 
@@ -171,7 +172,7 @@ class PointCloudDiffusionTrainer:
                         # save checkpoint
                         os.makedirs(checkpoint_dir, exist_ok=True)
                         checkpoint_data = {
-                            "weights": self.diffusion.state_dict(),
+                            "weights": self.diffusion.model.state_dict(),
                             "optimizer": self.optimizer.state_dict(),
                             "lr_scheduler": self.lr_scheduler.state_dict(),
                         }
@@ -201,7 +202,7 @@ class PointCloudDiffusionTrainer:
 
         if self.save_dir:
             weights_save_path = os.path.join(self.save_dir, "weights.pt")
-            torch.save(self.diffusion.state_dict(), weights_save_path)
+            torch.save(self.diffusion.model.state_dict(), weights_save_path)
 
         if self.checkpoint_train_end:
             self.checkpoint_train_end(

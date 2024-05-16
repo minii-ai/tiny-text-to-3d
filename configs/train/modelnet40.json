@@ -2,9 +2,9 @@
   "lr": 1e-3,
   "min_lr": 1e-4,
   "batch_size": 32,
-  "train_steps": 100000,
+  "train_steps": 200000,
   "warmup_steps": 1000,
-  "checkpoint_every": 1000,
+  "checkpoint_every": 2000,
   "validation": {
     "prompts": [
       "an airplane",
@@ -18,7 +18,7 @@
       "a lamp",
       "a table"
     ],
-    "num_inference_steps": 1000,
+    "num_inference_steps": 100,
     "guidance_scale": 1.0,
     "num_samples": 5
   }

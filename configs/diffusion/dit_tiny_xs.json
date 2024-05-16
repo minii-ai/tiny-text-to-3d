@@ -7,9 +7,9 @@
     "type": "CLIPConditionalPointCloudDiT",
     "num_points": 1024,
     "dim": 3,
-    "depth": 12,
-    "hidden_size": 128,
-    "num_heads": 4,
+    "depth": 8,
+    "hidden_size": 64,
+    "num_heads": 2,
     "mlp_ratio": 4,
     "clip_model": "ViT-B-32"
   },
