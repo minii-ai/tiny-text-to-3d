@@ -131,6 +131,7 @@ def main(args):
         diffusion=diffusion,
         train_loader=dataloader,
         lr=train_config["lr"],
+        min_lr=train_config["min_lr"],
         train_steps=train_config["train_steps"],
         warmup_steps=train_config["warmup_steps"],
         checkpoint_every=train_config["checkpoint_every"],

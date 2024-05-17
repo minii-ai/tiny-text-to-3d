@@ -1,6 +1,6 @@
 {
   "lr": 1e-3,
-  "min_lr": 1e-4,
+  "min_lr": 1e-3,
   "batch_size": 32,
   "train_steps": 200000,
   "warmup_steps": 1000,
@@ -8,14 +8,11 @@
   "validation": {
     "prompts": [
       "an airplane",
-      "a computer monitor",
-      "a bottle of water",
-      "a musical instrument",
-      "a bed",
-      "a toliet",
-      "object where i poop",
-      "living organism",
+      "a bottle",
+      "a car",
+      "a chair",
       "a lamp",
+      "a person",
       "a table"
     ],
     "num_inference_steps": 100,

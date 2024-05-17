@@ -1,20 +1,21 @@
 {
   "noise_scheduler": {
     "num_timesteps": 1000,
-    "schedule_type": "cosine"
+    "schedule_type": "linear"
   },
   "model": {
     "type": "CLIPConditionalPointCloudDiT",
     "num_points": 1024,
     "dim": 3,
     "depth": 24,
-    "hidden_size": 64,
+    "hidden_size": 128,
     "num_heads": 2,
     "mlp_ratio": 4,
     "clip_model": "ViT-B-32"
   },
   "sampler": {
-    "type": "DDPMSampler"
+    "type": "DDIMSampler",
+    "eta": 0
   },
   "min_snr_loss_weight": true,
   "min_snr_gamma": 5.0
