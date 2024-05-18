@@ -13,10 +13,13 @@
       "a chair",
       "a lamp",
       "a person",
-      "a table"
+      "a table",
+      "a toliet",
+      "a monitor",
+      "a cone"
     ],
     "num_inference_steps": 100,
-    "guidance_scale": 1.0,
+    "guidance_scale": 2.0,
     "num_samples": 5
   }
 }
