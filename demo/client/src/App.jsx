@@ -1,47 +1,27 @@
-import {
-  Card,
-  Slider,
-  TextArea,
-  TextField,
-  Heading,
-  Button,
-} from "@radix-ui/themes";
+import { TextField, Heading, Button } from "@radix-ui/themes";
 import { useState, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-
-const points = [
-  [1, 0, 0],
-  [0, 1, 0],
-  [0, 0, 1],
-];
 
 function App() {
   const canvasRef = useRef();
   const cameraRef = useRef();
   const rendererRef = useRef();
+  const sceneRef = useRef();
+  const wsRef = useRef();
   const [prompt, setPrompt] = useState("");
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    // const ctx = canvas.getContext("2d");
+  const removeAllMeshes = () => {
+    console.log("[INFO] Removing all meshes");
 
-    // ctx.fillStyle = "#111111";
+    const scene = sceneRef.current;
+    const object = scene.getObjectByName("points");
 
-    const renderer = new THREE.WebGLRenderer({ canvas });
+    scene.remove(object);
+  };
 
-    const scene = new THREE.Scene();
-
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.z = 5;
-    cameraRef.current = camera;
-    rendererRef.current = renderer;
-
+  const renderPoints = (points) => {
+    const group = new THREE.Group();
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
 
@@ -62,8 +42,32 @@ function App() {
     points.forEach(([x, y, z]) => {
       const sphere = new THREE.Mesh(sphereGeometry, material);
       sphere.position.set(x, y, z);
-      scene.add(sphere);
+      group.add(sphere);
     });
+
+    group.name = "points";
+    group.rotation.x = -Math.PI / 2;
+    sceneRef.current.add(group);
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const renderer = new THREE.WebGLRenderer({ canvas });
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+
+    camera.position.set(3, 3, 3);
+
+    cameraRef.current = camera;
+    rendererRef.current = renderer;
+    sceneRef.current = scene;
 
     const controls = new OrbitControls(camera, renderer.domElement);
 
@@ -104,9 +108,49 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8080");
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("[INFO] Websocket Open");
+    };
+
+    ws.onerror = (error) => {
+      console.log("[INFO] Websocket Error");
+      console.log(error);
+    };
+
+    ws.onmessage = (event) => {
+      console.log("[INFO] Websocket Message");
+      const data = JSON.parse(event.data);
+      const { progress, points } = data;
+
+      console.log(data);
+
+      removeAllMeshes();
+      renderPoints(points);
+    };
+
+    ws.onclose = () => {
+      console.log("[INFO] Websocket Closed");
+    };
+
+    return () => {
+      console.log("closing");
+      ws.close();
+    };
+  }, []);
+
+  const generatePointCloudFromPrompt = (prompt) => {
+    const ws = wsRef.current;
+    const message = JSON.stringify({ prompt });
+    ws.send(message);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("handle submit");
+    generatePointCloudFromPrompt(prompt.trim());
   };
 
   return (
