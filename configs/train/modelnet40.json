@@ -7,16 +7,16 @@
   "checkpoint_every": 2000,
   "validation": {
     "prompts": [
-      "an airplane",
-      "a bottle",
-      "a car",
-      "a chair",
-      "a lamp",
-      "a person",
-      "a table",
-      "a toliet",
-      "a monitor",
-      "a cone"
+      "airplane",
+      "bottle",
+      "car",
+      "chair",
+      "lamp",
+      "person",
+      "table",
+      "toliet",
+      "monitor",
+      "cone"
     ],
     "num_inference_steps": 100,
     "guidance_scale": 2.0,
