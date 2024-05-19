@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import websockets
 
@@ -7,6 +8,9 @@ async def handler(websocket, path):
     try:
         async for message in websocket:
             print(f"Received message: {message}")
+            message = json.loads(message)
+
+            print(message)
             await websocket.send(f"Echo: {message}")
     except websockets.ConnectionClosedOK:
         print("Connection closed")

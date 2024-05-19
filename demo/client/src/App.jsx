@@ -105,6 +105,7 @@ function App() {
   }, []);
 
   const handleSubmit = (e) => {
+    e.preventDefault();
     console.log("handle submit");
   };
 
@@ -124,7 +125,7 @@ function App() {
 
       <canvas ref={canvasRef} />
 
-      <div
+      <form
         style={{
           display: "flex",
           alignItems: "center",
@@ -135,6 +136,7 @@ function App() {
           left: "50%",
           transform: "translateX(-50%)",
         }}
+        onSubmit={handleSubmit}
       >
         <TextField.Root
           style={{ flex: 1, marginRight: 8 }}
@@ -145,7 +147,7 @@ function App() {
           onChange={(e) => setPrompt(e.target.value)}
         />
 
-        <Button size="3" highContrast={!!prompt}>
+        <Button size="3" highContrast={!!prompt} disabled={!prompt}>
           <svg
             width="16"
             height="16"
@@ -162,8 +164,7 @@ function App() {
             ></path>
           </svg>
         </Button>
-        {/* </form> */}
-      </div>
+      </form>
     </div>
   );
 }
